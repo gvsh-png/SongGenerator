@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { SavedSong } from '../types';
 import { deleteSong, getSongAudio, getSongsMetadata } from '../lib/storage';
+import { downloadAudio } from '../lib/download';
 import { formatCost, formatDuration } from '../lib/pricing';
 import { MODEL_PRICING } from '../lib/pricing';
 
@@ -9,13 +9,21 @@ interface SongLibraryProps {
 }
 
 export function SongLibrary({ refreshKey }: SongLibraryProps) {
-  const [songs, setSongs] = useState<Omit<SavedSong, 'audioDataUrl'>[]>([]);
+  const [songs, setSongs] = useState(getSongsMetadata());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     setSongs(getSongsMetadata());
   }, [refreshKey]);
+
+  const ensureAudio = async (id: string): Promise<string | null> => {
+    if (audioUrls[id]) return audioUrls[id];
+    const audio = await getSongAudio(id);
+    if (audio) setAudioUrls((prev) => ({ ...prev, [id]: audio }));
+    return audio;
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this song?')) return;
@@ -26,6 +34,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
       delete next[id];
       return next;
     });
+    if (expandedId === id) setExpandedId(null);
   };
 
   const handleExpand = async (id: string) => {
@@ -34,16 +43,24 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
       return;
     }
     setExpandedId(id);
-    if (!audioUrls[id]) {
-      const audio = await getSongAudio(id);
-      if (audio) setAudioUrls((prev) => ({ ...prev, [id]: audio }));
+    await ensureAudio(id);
+  };
+
+  const handleDownload = async (id: string, title: string) => {
+    setDownloadingId(id);
+    try {
+      const audio = await ensureAudio(id);
+      if (!audio) return;
+      downloadAudio(audio, title);
+    } finally {
+      setDownloadingId(null);
     }
   };
 
   if (songs.length === 0) {
     return (
       <div className="library-empty">
-        <p>No songs yet. Create your first one above!</p>
+        <p>No songs yet. Create your first one in the Create tab.</p>
       </div>
     );
   }
@@ -68,7 +85,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
                   {MODEL_PRICING[song.model].label}
                 </span>
               </div>
-              <span className="song-card-chevron">
+              <span className="song-card-chevron" aria-hidden="true">
                 {expandedId === song.id ? '▾' : '▸'}
               </span>
             </button>
@@ -89,13 +106,23 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
                 <p className="song-prompt">{song.prompt}</p>
                 <div className="song-card-actions">
                   <span className="song-cost">{formatCost(song.cost)}</span>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => handleDelete(song.id)}
-                  >
-                    Delete
-                  </button>
+                  <div className="song-card-buttons">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => handleDownload(song.id, song.title)}
+                      disabled={downloadingId === song.id}
+                    >
+                      {downloadingId === song.id ? 'Saving…' : 'Download MP3'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => handleDelete(song.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

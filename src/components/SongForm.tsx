@@ -175,7 +175,7 @@ export function SongForm({
 
       <div className="form-section">
         <label className="field-label">Vocals</label>
-        <div className="chip-group">
+        <div className="chip-group chip-group--wrap">
           {VOCAL_TYPES.map((v) => (
             <button
               key={v.value}

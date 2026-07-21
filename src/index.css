@@ -12,7 +12,10 @@
   --error: #f87171;
   --radius: 12px;
   --radius-sm: 8px;
+  --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --header-height: 57px;
+  --tab-nav-height: 64px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -31,6 +34,8 @@
 html {
   font-size: 16px;
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 body {
@@ -38,88 +43,138 @@ body {
   color: var(--text);
   min-height: 100dvh;
   line-height: 1.5;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 #root {
   min-height: 100dvh;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 a {
   color: var(--accent);
   text-decoration: none;
+  word-break: break-word;
 }
 
 a:hover {
   text-decoration: underline;
 }
 
+img,
+video,
+audio,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* ── App Layout ── */
 
 .app {
+  width: 100%;
   max-width: 520px;
   margin: 0 auto;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: calc(12px + var(--safe-top)) 16px 12px;
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  background: var(--bg);
-  z-index: 10;
+  background: rgba(10, 10, 11, 0.95);
+  backdrop-filter: blur(12px);
+  z-index: 20;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .header-brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .brand-icon {
   font-size: 1.4rem;
   color: var(--accent);
+  flex-shrink: 0;
 }
 
 .app-header h1 {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-}
-
-.tab-nav {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 12px 0;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.tab-btn--active {
-  color: var(--text);
-  border-bottom-color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-main {
   flex: 1;
-  padding: 20px;
-  padding-bottom: calc(20px + var(--safe-bottom));
+  width: 100%;
+  min-width: 0;
+  padding: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-nav {
+  display: flex;
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+  background: rgba(10, 10, 11, 0.95);
+  backdrop-filter: blur(12px);
+  z-index: 20;
+}
+
+.tab-nav--bottom {
+  position: sticky;
+  bottom: 0;
+  border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--tab-nav-height);
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-top: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  min-width: 0;
+}
+
+.tab-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.tab-btn--active {
+  color: var(--accent);
+  border-top-color: var(--accent);
 }
 
 /* ── API Key Setup ── */
@@ -129,7 +184,8 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 24px 16px;
+  overflow-x: hidden;
 }
 
 .setup-card {
@@ -160,6 +216,13 @@ a:hover {
 .key-input-row {
   display: flex;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.key-input-row .text-input {
+  flex: 1;
+  min-width: 0;
 }
 
 /* ── Form ── */
@@ -168,18 +231,24 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .form-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
 }
 
 .field-label {
@@ -194,12 +263,18 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
 }
 
 .text-input,
 .text-area,
 .select-input {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 12px 14px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -209,6 +284,7 @@ a:hover {
   font-family: inherit;
   transition: border-color 0.15s;
   -webkit-appearance: none;
+  appearance: none;
 }
 
 .text-input:focus,
@@ -223,10 +299,12 @@ a:hover {
   resize: vertical;
   min-height: 80px;
   line-height: 1.5;
+  word-break: break-word;
 }
 
 .range-input {
   width: 100%;
+  max-width: 100%;
   accent-color: var(--accent);
   height: 6px;
 }
@@ -242,20 +320,14 @@ a:hover {
 
 .chip-group {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  width: 100%;
+  min-width: 0;
 }
 
 .chip-group--wrap {
   flex-wrap: wrap;
-  overflow-x: visible;
-}
-
-.chip-group::-webkit-scrollbar {
-  display: none;
 }
 
 .chip {
@@ -267,9 +339,9 @@ a:hover {
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
   transition: all 0.15s;
-  flex-shrink: 0;
 }
 
 .chip--active {
@@ -472,18 +544,27 @@ a:hover {
   gap: 8px;
 }
 
+.song-library {
+  width: 100%;
+  min-width: 0;
+}
+
 .song-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  width: 100%;
+  min-width: 0;
 }
 
 .song-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   width: 100%;
+  min-width: 0;
   padding: 14px 16px;
   background: none;
   border: none;
@@ -497,21 +578,30 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .song-card-title {
   font-weight: 600;
   font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .song-card-meta {
   font-size: 0.78rem;
   color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .song-card-chevron {
   color: var(--text-muted);
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 .song-card-body {
@@ -536,12 +626,25 @@ a:hover {
   font-size: 0.78rem;
   color: var(--text-muted);
   line-height: 1.4;
+  word-break: break-word;
 }
 
 .song-card-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.song-card-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.song-card-buttons .btn {
+  flex: 1;
+  min-width: 120px;
 }
 
 .song-cost {
@@ -561,7 +664,9 @@ a:hover {
   align-items: center;
   justify-content: center;
   z-index: 100;
-  padding: 20px;
+  padding: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .loader-card {
@@ -572,6 +677,7 @@ a:hover {
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .loader-visual {
@@ -732,6 +838,7 @@ a:hover {
   font-size: 0.82rem;
   margin-top: 4px;
   color: var(--text);
+  word-break: break-word;
 }
 
 .loader-pulse {
@@ -758,13 +865,18 @@ a:hover {
 
 /* ── Responsive ── */
 
-@media (max-width: 380px) {
+@media (max-width: 480px) {
   .form-grid {
     grid-template-columns: 1fr;
   }
 
   .app-main {
-    padding: 16px;
+    padding: 14px;
+  }
+
+  .app-header {
+    padding-left: 14px;
+    padding-right: 14px;
   }
 }
 

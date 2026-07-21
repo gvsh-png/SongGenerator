@@ -99,21 +99,6 @@ function App() {
         </button>
       </header>
 
-      <nav className="tab-nav">
-        <button
-          className={`tab-btn ${activeTab === 'create' ? 'tab-btn--active' : ''}`}
-          onClick={() => setActiveTab('create')}
-        >
-          Create
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'library' ? 'tab-btn--active' : ''}`}
-          onClick={() => setActiveTab('library')}
-        >
-          Library
-        </button>
-      </nav>
-
       <main className="app-main">
         {activeTab === 'create' && (
           <>
@@ -137,6 +122,25 @@ function App() {
           <SongLibrary refreshKey={libraryKey} />
         )}
       </main>
+
+      <nav className="tab-nav tab-nav--bottom" aria-label="Main navigation">
+        <button
+          className={`tab-btn ${activeTab === 'create' ? 'tab-btn--active' : ''}`}
+          onClick={() => setActiveTab('create')}
+          type="button"
+        >
+          <span className="tab-icon" aria-hidden="true">✦</span>
+          Create
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'library' ? 'tab-btn--active' : ''}`}
+          onClick={() => setActiveTab('library')}
+          type="button"
+        >
+          <span className="tab-icon" aria-hidden="true">♫</span>
+          Library
+        </button>
+      </nav>
 
       {isGenerating && progress && (
         <GenerationLoader progress={progress} onCancel={handleCancel} />
