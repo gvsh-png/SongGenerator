@@ -6,6 +6,10 @@ export type VocalType = 'instrumental' | 'male' | 'female' | 'duet' | 'choir';
 export type EnergyLevel = 'low' | 'medium' | 'high' | 'intense';
 export type Tempo = 'slow' | 'medium' | 'fast' | 'variable';
 
+export type AppView = 'home' | 'create' | 'library' | 'prompt-flow';
+
+export type PromptFlowStep = 'configure' | 'copy-prompt' | 'paste-lyrics' | 'confirm';
+
 export interface SongOptions {
   title: string;
   description: string;
@@ -22,6 +26,21 @@ export interface SongOptions {
   lyrics: string;
   seed?: number;
   model: ModelId;
+}
+
+export interface PromptFlowState {
+  step: PromptFlowStep;
+  genre: string;
+  vocals: VocalType;
+  mood: string;
+  tempo: Tempo;
+  energy: EnergyLevel;
+  theme: string;
+  generatedPrompt: string;
+  pastedLyrics: string;
+  duration: number;
+  suggestedTitle: string;
+  customTitle: string;
 }
 
 export interface SavedSong {
@@ -87,3 +106,20 @@ export const STRUCTURES = [
   'Auto', 'Verse-Chorus', 'Verse-Chorus-Bridge', 'AABA', 'Through-composed',
   'Loop-based', 'Build-up',
 ] as const;
+
+export function defaultPromptFlowState(): PromptFlowState {
+  return {
+    step: 'configure',
+    genre: 'Pop',
+    vocals: 'female',
+    mood: 'Uplifting',
+    tempo: 'medium',
+    energy: 'medium',
+    theme: '',
+    generatedPrompt: '',
+    pastedLyrics: '',
+    duration: 60,
+    suggestedTitle: '',
+    customTitle: '',
+  };
+}

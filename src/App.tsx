@@ -1,37 +1,43 @@
 import { useCallback, useRef, useState } from 'react';
-import type { GenerationProgress, SavedSong, SongOptions } from './types';
+import type { AppView, GenerationProgress, PromptFlowState, SavedSong } from './types';
+import { defaultPromptFlowState } from './types';
 import { ApiKeySetup } from './components/ApiKeySetup';
 import { SongForm } from './components/SongForm';
 import { SongLibrary } from './components/SongLibrary';
 import { GenerationLoader } from './components/GenerationLoader';
-import { getApiKey, saveSong } from './lib/storage';
-import { buildPrompt, defaultSongOptions } from './lib/prompt';
+import { HomeScreen } from './components/HomeScreen';
+import { CreateActionSheet } from './components/CreateActionSheet';
+import { BottomNav } from './components/BottomNav';
+import { PromptWorkflow } from './components/PromptWorkflow';
+import { getApiKey, saveSong, clearApiKey } from './lib/storage';
+import { buildPrompt, buildPromptFromFlow, defaultSongOptions, flowToSongOptions } from './lib/prompt';
 import { generateSong } from './lib/openrouter';
 import { estimateCost, selectCheapestModel } from './lib/pricing';
-import { clearApiKey } from './lib/storage';
 
 function App() {
   const [hasKey, setHasKey] = useState(!!getApiKey());
-  const [options, setOptions] = useState<SongOptions>(defaultSongOptions());
+  const [view, setView] = useState<AppView>('home');
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [options, setOptions] = useState(defaultSongOptions());
+  const [promptFlow, setPromptFlow] = useState<PromptFlowState>(defaultPromptFlowState());
   const [autoModel, setAutoModel] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [libraryKey, setLibraryKey] = useState(0);
-  const [activeTab, setActiveTab] = useState<'create' | 'library'>('create');
   const abortRef = useRef<AbortController | null>(null);
 
-  const handleGenerate = useCallback(async () => {
+  const runGeneration = useCallback(async (
+    prompt: string,
+    model: ReturnType<typeof selectCheapestModel>,
+    duration: number,
+    songMeta: { title: string; options: SavedSong['options'] },
+  ) => {
     const apiKey = getApiKey();
     if (!apiKey) return;
 
     setError(null);
     setIsGenerating(true);
-
-    const model = autoModel ? selectCheapestModel(options.duration) : options.model;
-    const finalOptions = { ...options, model };
-    const prompt = buildPrompt(finalOptions);
-
     abortRef.current = new AbortController();
 
     try {
@@ -39,27 +45,27 @@ function App() {
         apiKey,
         prompt,
         model,
-        options.duration,
+        duration,
         { onProgress: setProgress },
         abortRef.current.signal,
       );
 
       const song: SavedSong = {
         id: crypto.randomUUID(),
-        title: options.title || `${options.genre} ${options.mood} Track`,
+        title: songMeta.title,
         prompt,
-        options: finalOptions,
+        options: songMeta.options,
         audioDataUrl: result.audioDataUrl,
         transcript: result.transcript,
         model,
         cost: estimateCost(model),
-        duration: options.duration,
+        duration,
         createdAt: Date.now(),
       };
 
       await saveSong(song);
       setLibraryKey((k) => k + 1);
-      setActiveTab('library');
+      setView('library');
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         setError('Generation cancelled.');
@@ -71,10 +77,45 @@ function App() {
       setProgress(null);
       abortRef.current = null;
     }
-  }, [options, autoModel]);
+  }, []);
+
+  const handleGenerate = useCallback(async () => {
+    const model = autoModel ? selectCheapestModel(options.duration) : options.model;
+    const finalOptions = { ...options, model };
+    const prompt = buildPrompt(finalOptions);
+    const title = options.title || `${options.genre} ${options.mood} Track`;
+
+    await runGeneration(prompt, model, options.duration, {
+      title,
+      options: finalOptions,
+    });
+  }, [options, autoModel, runGeneration]);
+
+  const handlePromptFlowConfirm = useCallback(async (flow: PromptFlowState) => {
+    const model = selectCheapestModel(flow.duration);
+    const songOptions = flowToSongOptions(flow);
+    const prompt = buildPromptFromFlow(flow);
+    const title = flow.customTitle.trim() || flow.suggestedTitle || `${flow.genre} Track`;
+
+    await runGeneration(prompt, model, flow.duration, {
+      title,
+      options: { ...songOptions, model },
+    });
+  }, [runGeneration]);
 
   const handleCancel = () => {
     abortRef.current?.abort();
+  };
+
+  const openCreate = () => {
+    setError(null);
+    setView('create');
+  };
+
+  const openPromptFlow = () => {
+    setError(null);
+    setPromptFlow(defaultPromptFlowState());
+    setView('prompt-flow');
   };
 
   if (!hasKey) {
@@ -82,69 +123,105 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="header-brand">
-          <span className="brand-icon">♪</span>
-          <h1>Lyria Studio</h1>
-        </div>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => {
-            clearApiKey();
-            setHasKey(false);
-          }}
-        >
-          Settings
-        </button>
-      </header>
+    <div className="app-shell">
+      <div className="app">
+        <header className="app-header">
+          <button
+            type="button"
+            className="header-brand"
+            onClick={() => setView('home')}
+          >
+            <span className="brand-icon">♪</span>
+            <h1>Lyria Studio</h1>
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              clearApiKey();
+              setHasKey(false);
+            }}
+          >
+            Settings
+          </button>
+        </header>
 
-      <main className="app-main">
-        {activeTab === 'create' && (
-          <>
-            <SongForm
-              options={options}
-              onChange={setOptions}
-              onSubmit={handleGenerate}
-              isGenerating={isGenerating}
-              autoModel={autoModel}
-              onAutoModelChange={setAutoModel}
+        <main className="app-main">
+          {view === 'home' && (
+            <HomeScreen
+              onCreateSong={openCreate}
+              onPromptFlow={openPromptFlow}
+              onOpenLibrary={() => setView('library')}
+              libraryKey={libraryKey}
             />
-            {error && (
-              <div className="error-banner" role="alert">
-                {error}
+          )}
+
+          {view === 'create' && (
+            <div className="page-create">
+              <div className="page-header">
+                <h2>Create a song</h2>
+                <p>Describe your track and generate with Lyria 3.</p>
               </div>
-            )}
-          </>
+              <SongForm
+                options={options}
+                onChange={setOptions}
+                onSubmit={handleGenerate}
+                isGenerating={isGenerating}
+                autoModel={autoModel}
+                onAutoModelChange={setAutoModel}
+              />
+              {error && (
+                <div className="error-banner" role="alert">
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
+
+          {view === 'prompt-flow' && (
+            <>
+              <PromptWorkflow
+                state={promptFlow}
+                onChange={setPromptFlow}
+                onConfirm={handlePromptFlowConfirm}
+                onBack={() => setView('home')}
+                isGenerating={isGenerating}
+              />
+              {error && (
+                <div className="error-banner" role="alert">
+                  {error}
+                </div>
+              )}
+            </>
+          )}
+
+          {view === 'library' && (
+            <div className="page-library">
+              <div className="page-header">
+                <h2>Your library</h2>
+                <p>Listen, download, and manage your songs.</p>
+              </div>
+              <SongLibrary refreshKey={libraryKey} />
+            </div>
+          )}
+        </main>
+
+        <BottomNav
+          activeView={view}
+          onNavigate={setView}
+          onCreatePress={() => setSheetOpen(true)}
+        />
+
+        <CreateActionSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          onCreateSong={openCreate}
+          onPromptFlow={openPromptFlow}
+        />
+
+        {isGenerating && progress && (
+          <GenerationLoader progress={progress} onCancel={handleCancel} />
         )}
-
-        {activeTab === 'library' && (
-          <SongLibrary refreshKey={libraryKey} />
-        )}
-      </main>
-
-      <nav className="tab-nav tab-nav--bottom" aria-label="Main navigation">
-        <button
-          className={`tab-btn ${activeTab === 'create' ? 'tab-btn--active' : ''}`}
-          onClick={() => setActiveTab('create')}
-          type="button"
-        >
-          <span className="tab-icon" aria-hidden="true">✦</span>
-          Create
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'library' ? 'tab-btn--active' : ''}`}
-          onClick={() => setActiveTab('library')}
-          type="button"
-        >
-          <span className="tab-icon" aria-hidden="true">♫</span>
-          Library
-        </button>
-      </nav>
-
-      {isGenerating && progress && (
-        <GenerationLoader progress={progress} onCancel={handleCancel} />
-      )}
+      </div>
     </div>
   );
 }
