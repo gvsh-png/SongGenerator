@@ -4,13 +4,20 @@ This folder is the **self-hosted backend** for the local edition of the app (`np
 
 The React app talks to your server over HTTP. No OpenRouter, no Google filters — you control the model and policies.
 
-## Quick start (mock / UI test)
+## Quick start (real model — MusicGen)
+
+Downloads **facebook/musicgen-small** (~1.5 GB) on first run. CPU-only; a 30s clip may take several minutes.
 
 ```bash
-# Terminal 1 — mock server (returns silent WAV)
-npm run local-server:mock
+npm run local-server:install   # once — Python deps + model cache
+npm run local-server:real      # terminal 1
+npm run dev:local              # terminal 2
+```
 
-# Terminal 2 — local frontend
+## Quick start (mock / UI test only)
+
+```bash
+npm run local-server:mock
 npm run dev:local
 ```
 

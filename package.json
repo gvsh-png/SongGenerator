@@ -10,6 +10,8 @@
     "build:local": "tsc -b && vite build --mode selfhosted",
     "local-server": "node local-server/index.js",
     "local-server:mock": "LOCAL_MOCK=1 node local-server/index.js",
+    "local-server:install": "python3 -m pip install -r local-server/requirements.txt",
+    "local-server:real": "python3 local-server/server.py",
     "lint": "oxlint",
     "preview": "vite preview",
     "preview:local": "vite preview --outDir dist-local"
