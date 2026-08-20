@@ -51,6 +51,7 @@ export interface MusicVideoMeta {
   createdAt: number;
   resolution: string;
   model: VideoModelId;
+  clipCount: number;
 }
 
 export interface SavedSong {

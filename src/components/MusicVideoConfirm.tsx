@@ -1,13 +1,12 @@
-import { formatCost } from '../lib/pricing';
+import { formatCost, formatDuration } from '../lib/pricing';
 import {
-  MUSIC_VIDEO_DURATION,
   VIDEO_PRICING,
-  estimateMusicVideoCost,
+  planMusicVideoClips,
 } from '../lib/musicVideo';
-import { formatDuration } from '../lib/pricing';
 
 interface MusicVideoConfirmProps {
   songTitle: string;
+  songDuration: number;
   open: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -16,6 +15,7 @@ interface MusicVideoConfirmProps {
 
 export function MusicVideoConfirm({
   songTitle,
+  songDuration,
   open,
   onConfirm,
   onCancel,
@@ -23,7 +23,7 @@ export function MusicVideoConfirm({
 }: MusicVideoConfirmProps) {
   if (!open) return null;
 
-  const cost = estimateMusicVideoCost();
+  const plan = planMusicVideoClips(songDuration);
 
   return (
     <div className="sheet-overlay" onClick={onCancel} role="presentation">
@@ -37,7 +37,7 @@ export function MusicVideoConfirm({
         <div className="sheet-handle" aria-hidden="true" />
         <h2 className="sheet-title">Create music video</h2>
         <p className="sheet-subtitle">
-          Visual clip for &ldquo;{songTitle}&rdquo;
+          Full-length visual for &ldquo;{songTitle}&rdquo;
         </p>
 
         <div className="cost-preview">
@@ -46,8 +46,16 @@ export function MusicVideoConfirm({
             <span className="cost-value">{VIDEO_PRICING.label}</span>
           </div>
           <div className="cost-row">
-            <span className="cost-label">Clip length</span>
-            <span className="cost-value">{formatDuration(MUSIC_VIDEO_DURATION)}</span>
+            <span className="cost-label">Song length</span>
+            <span className="cost-value">{formatDuration(songDuration)}</span>
+          </div>
+          <div className="cost-row">
+            <span className="cost-label">Video length</span>
+            <span className="cost-value">{formatDuration(plan.totalDuration)}</span>
+          </div>
+          <div className="cost-row">
+            <span className="cost-label">Clips to generate</span>
+            <span className="cost-value">{plan.clipCount} × up to 8s</span>
           </div>
           <div className="cost-row">
             <span className="cost-label">Resolution</span>
@@ -59,10 +67,10 @@ export function MusicVideoConfirm({
           </div>
           <div className="cost-row cost-row--total">
             <span className="cost-label">Estimated cost</span>
-            <span className="cost-value cost-value--price">{formatCost(cost)}</span>
+            <span className="cost-value cost-value--price">{formatCost(plan.estimatedCost)}</span>
           </div>
           <p className="cost-hint">
-            Generates an 8s cinematic visual. Play it alongside your downloaded song.
+            Generates a video matching your song length (up to 2 min), stitched from {plan.clipCount} clip{plan.clipCount > 1 ? 's' : ''}. Play alongside your downloaded MP3.
           </p>
         </div>
 
@@ -81,7 +89,7 @@ export function MusicVideoConfirm({
             onClick={onConfirm}
             disabled={isGenerating}
           >
-            {isGenerating ? 'Generating…' : `Confirm · ${formatCost(cost)}`}
+            {isGenerating ? 'Generating…' : `Confirm · ${formatCost(plan.estimatedCost)}`}
           </button>
         </div>
       </div>

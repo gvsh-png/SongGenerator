@@ -15,7 +15,6 @@ import { MODEL_PRICING } from '../lib/pricing';
 import {
   VIDEO_MODEL,
   VIDEO_PRICING,
-  buildMusicVideoPrompt,
   estimateMusicVideoCost,
 } from '../lib/musicVideo';
 import { generateMusicVideo } from '../lib/videoGeneration';
@@ -132,10 +131,9 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
     abortRef.current = new AbortController();
 
     try {
-      const prompt = buildMusicVideoPrompt(song);
       const result = await generateMusicVideo(
         apiKey,
-        prompt,
+        song,
         { onProgress: setVideoProgress },
         abortRef.current.signal,
       );
@@ -148,6 +146,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
           createdAt: Date.now(),
           resolution: VIDEO_PRICING.resolution,
           model: VIDEO_MODEL,
+          clipCount: result.clipCount,
         },
       });
 
@@ -265,7 +264,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
                           onClick={() => setConfirmVideoSongId(song.id)}
                           disabled={isGeneratingVideo}
                         >
-                          ▶ Music video · {formatCost(estimateMusicVideoCost())}
+                          ▶ Music video · {formatCost(estimateMusicVideoCost(song.duration))}
                         </button>
                       ) : (
                         <button
@@ -302,6 +301,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
 
       <MusicVideoConfirm
         songTitle={confirmSong?.title ?? 'Untitled Song'}
+        songDuration={confirmSong?.duration ?? 30}
         open={!!confirmVideoSongId && !isGeneratingVideo}
         onConfirm={handleConfirmMusicVideo}
         onCancel={() => setConfirmVideoSongId(null)}

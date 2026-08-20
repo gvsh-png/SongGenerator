@@ -1,10 +1,11 @@
-import type { GenerationProgress } from '../types';
+import type { SavedSong, GenerationProgress } from '../types';
 import {
-  MUSIC_VIDEO_DURATION,
   VIDEO_MODEL,
-  estimateMusicVideoCost,
+  buildMusicVideoPromptForClip,
+  planMusicVideoClips,
   estimateVideoGenerationTimeMs,
 } from './musicVideo';
+import { concatVideoClips } from './videoConcat';
 
 export interface VideoJobResponse {
   id: string;
@@ -26,6 +27,7 @@ export interface GenerateMusicVideoResult {
   videoBlob: Blob;
   cost: number;
   duration: number;
+  clipCount: number;
 }
 
 export interface VideoGenerationCallbacks {
@@ -48,35 +50,14 @@ async function resolvePollUrl(pollingUrl: string): Promise<string> {
   return `https://openrouter.ai${pollingUrl.startsWith('/') ? '' : '/'}${pollingUrl}`;
 }
 
-export async function generateMusicVideo(
+async function generateSingleClip(
   apiKey: string,
   prompt: string,
-  callbacks: VideoGenerationCallbacks,
+  clipDuration: number,
+  onStatus: (msg: string) => void,
   signal?: AbortSignal,
-): Promise<GenerateMusicVideoResult> {
-  const startTime = Date.now();
-  const estimatedTotal = estimateVideoGenerationTimeMs();
-  const expectedCost = estimateMusicVideoCost();
-
-  const update = (
-    phase: GenerationProgress['phase'],
-    progress: number,
-    message: string,
-    extra: Partial<GenerationProgress> = {},
-  ) => {
-    const elapsedMs = Date.now() - startTime;
-    callbacks.onProgress({
-      phase,
-      progress: Math.min(99, progress),
-      message,
-      elapsedMs,
-      estimatedRemainingMs: Math.max(0, estimatedTotal - elapsedMs),
-      chunksReceived: extra.chunksReceived ?? 0,
-      transcript: extra.transcript ?? '',
-    });
-  };
-
-  update('submitting', 8, 'Submitting music video request…');
+): Promise<{ blob: Blob; cost: number }> {
+  onStatus('Submitting clip…');
 
   const submitRes = await fetch(`${OPENROUTER_BASE}/videos`, {
     method: 'POST',
@@ -84,7 +65,7 @@ export async function generateMusicVideo(
     body: JSON.stringify({
       model: VIDEO_MODEL,
       prompt,
-      duration: MUSIC_VIDEO_DURATION,
+      duration: clipDuration,
       resolution: '720p',
       aspect_ratio: '16:9',
       generate_audio: false,
@@ -107,15 +88,12 @@ export async function generateMusicVideo(
   const job = (await submitRes.json()) as VideoJobResponse;
   if (!job.polling_url) throw new Error('No polling URL returned from video API');
 
-  update('polling', 15, 'Video queued — waiting for generation…');
-
   let pollUrl = await resolvePollUrl(job.polling_url);
   let status: VideoPollResponse['status'] = 'pending';
   let pollData: VideoPollResponse | null = null;
   let attempts = 0;
-  const maxAttempts = 120;
 
-  while (attempts < maxAttempts) {
+  while (attempts < 120) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
     await delay(attempts === 0 ? 2000 : 5000);
@@ -132,13 +110,10 @@ export async function generateMusicVideo(
     pollData = (await pollRes.json()) as VideoPollResponse;
     status = pollData.status;
 
-    const elapsed = Date.now() - startTime;
-    const timeProgress = Math.min(85, 15 + (elapsed / estimatedTotal) * 70);
-
     if (status === 'pending') {
-      update('polling', timeProgress, 'Waiting in queue…');
+      onStatus('Waiting in queue…');
     } else if (status === 'in_progress') {
-      update('generating', timeProgress, 'Generating music video visuals…');
+      onStatus('Rendering clip…');
     } else if (status === 'completed') {
       break;
     } else if (status === 'failed' || status === 'cancelled' || status === 'expired') {
@@ -153,10 +128,10 @@ export async function generateMusicVideo(
   }
 
   if (status !== 'completed' || !pollData?.unsigned_urls?.length) {
-    throw new Error('Video generation timed out. Try again later.');
+    throw new Error('Video clip generation timed out.');
   }
 
-  update('downloading', 92, 'Downloading your music video…');
+  onStatus('Downloading clip…');
 
   const videoUrl = pollData.unsigned_urls[0];
   const videoRes = await fetch(videoUrl, {
@@ -167,11 +142,76 @@ export async function generateMusicVideo(
   });
 
   if (!videoRes.ok) {
-    throw new Error(`Failed to download video (${videoRes.status})`);
+    throw new Error(`Failed to download clip (${videoRes.status})`);
   }
 
-  const videoBlob = await videoRes.blob();
-  const cost = pollData.usage?.cost ?? expectedCost;
+  const blob = await videoRes.blob();
+  const cost = pollData.usage?.cost ?? clipDuration * 0.03;
+
+  return { blob, cost };
+}
+
+export async function generateMusicVideo(
+  apiKey: string,
+  song: Omit<SavedSong, 'audioDataUrl'>,
+  callbacks: VideoGenerationCallbacks,
+  signal?: AbortSignal,
+): Promise<GenerateMusicVideoResult> {
+  const plan = planMusicVideoClips(song.duration);
+  const startTime = Date.now();
+  const estimatedTotal = estimateVideoGenerationTimeMs(plan.clipCount);
+  let totalCost = 0;
+  const clipBlobs: Blob[] = [];
+
+  const update = (
+    phase: GenerationProgress['phase'],
+    progress: number,
+    message: string,
+  ) => {
+    const elapsedMs = Date.now() - startTime;
+    callbacks.onProgress({
+      phase,
+      progress: Math.min(99, progress),
+      message,
+      elapsedMs,
+      estimatedRemainingMs: Math.max(0, estimatedTotal - elapsedMs),
+      chunksReceived: clipBlobs.length,
+      transcript: '',
+    });
+  };
+
+  update('submitting', 5, `Planning ${plan.clipCount} clip${plan.clipCount > 1 ? 's' : ''}…`);
+
+  for (let i = 0; i < plan.clipDurations.length; i++) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+
+    const clipDuration = plan.clipDurations[i];
+    const clipProgressBase = 10 + (i / plan.clipCount) * 75;
+    const prompt = buildMusicVideoPromptForClip(song, i, plan.clipCount);
+
+    update(
+      'generating',
+      clipProgressBase,
+      `Generating clip ${i + 1} of ${plan.clipCount} (${clipDuration}s)…`,
+    );
+
+    const { blob, cost } = await generateSingleClip(
+      apiKey,
+      prompt,
+      clipDuration,
+      (msg) => update('generating', clipProgressBase + 5, `Clip ${i + 1}/${plan.clipCount}: ${msg}`),
+      signal,
+    );
+
+    clipBlobs.push(blob);
+    totalCost += cost;
+  }
+
+  update('finalizing', 88, 'Stitching clips into full music video…');
+
+  const videoBlob = await concatVideoClips(clipBlobs, (msg) => {
+    update('finalizing', 92, msg);
+  });
 
   callbacks.onProgress({
     phase: 'complete',
@@ -179,14 +219,15 @@ export async function generateMusicVideo(
     message: 'Music video ready!',
     elapsedMs: Date.now() - startTime,
     estimatedRemainingMs: 0,
-    chunksReceived: 0,
+    chunksReceived: clipBlobs.length,
     transcript: '',
   });
 
   return {
     videoBlob,
-    cost,
-    duration: MUSIC_VIDEO_DURATION,
+    cost: totalCost,
+    duration: plan.totalDuration,
+    clipCount: plan.clipCount,
   };
 }
 
