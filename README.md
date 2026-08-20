@@ -28,13 +28,34 @@ npm run build    # → dist/
 
 **Branch: `self-hosted`**
 
+### Windows (PowerShell)
+
+```powershell
+cd $HOME\SongGenerator
+git checkout self-hosted
+git pull
+npm install
+```
+
+**Install Python first** if you don't have it: https://www.python.org/downloads/  
+During install, check **"Add python.exe to PATH"**, then **close and reopen PowerShell**.
+
+```powershell
+npm run local-server:install-gpu   # once — CUDA PyTorch + MusicGen (~5 GB download)
+npm run local                      # starts API + UI
+npm run local:doctor               # troubleshoot connection issues
+```
+
+Open **http://localhost:5173** in your browser.
+
+### Linux / macOS
+
 ```bash
-cd SongGenerator          # ← folder where you ran git clone (must contain package.json)
+cd SongGenerator
 git checkout self-hosted
 npm install
-npm run local-server:install-gpu   # once, NVIDIA GPU
-npm run local                      # starts API + UI together
-npm run local:doctor               # if connection fails — shows what's wrong
+npm run local-server:install-gpu
+npm run local
 ```
 
 Set server URL to `http://localhost:8787` in the app setup screen.

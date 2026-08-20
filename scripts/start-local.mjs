@@ -1,15 +1,26 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
-import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { pythonLabel, requirePython } from './resolve-python.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const python = process.platform === 'win32' ? 'python' : 'python3';
+const prefix = requirePython();
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 function run(cmd, args, opts = {}) {
-  return spawn(cmd, args, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32', ...opts });
+  return spawn(cmd, args, {
+    cwd: root,
+    stdio: 'inherit',
+    ...opts,
+  });
+}
+
+function runPythonScript(scriptPath) {
+  return spawn(prefix[0], [...prefix.slice(1), scriptPath], {
+    cwd: root,
+    stdio: 'inherit',
+  });
 }
 
 async function waitForHealth(maxSeconds = 600) {
@@ -32,16 +43,16 @@ async function waitForHealth(maxSeconds = 600) {
 }
 
 console.log('==> Song Studio Local');
+console.log(`    Using ${pythonLabel(prefix)}`);
 console.log('    Starting MusicGen API on http://localhost:8787');
-console.log('    First run downloads the model — can take several minutes.');
-console.log('');
+console.log('    First run downloads the model — can take several minutes.\n');
 
-const api = run(python, ['local-server/server.py']);
+const api = runPythonScript('local-server/server.py');
 
 api.on('exit', (code) => {
   if (code !== 0 && code !== null) {
     console.error(`\nERROR: MusicGen server exited (code ${code}).`);
-    console.error('Run: npm run local-server:install   (or local-server:install-gpu for NVIDIA)');
+    console.error('Run: npm run local-server:install-gpu');
     process.exit(code ?? 1);
   }
 });
