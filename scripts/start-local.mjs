@@ -1,18 +1,23 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { pythonLabel, requirePython } from './resolve-python.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const prefix = requirePython();
-const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const viteBin = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js');
 
-function run(cmd, args, opts = {}) {
-  return spawn(cmd, args, {
+function runUi() {
+  if (!existsSync(viteBin)) {
+    console.error('Vite not found. Run: npm install');
+    process.exit(1);
+  }
+  // Run vite via node.exe — avoids Windows spawn EINVAL with npm.cmd on Node 24+
+  return spawn(process.execPath, [viteBin, '--mode', 'selfhosted'], {
     cwd: root,
     stdio: 'inherit',
-    ...opts,
   });
 }
 
@@ -73,7 +78,7 @@ if (health.status === 'loading') {
 }
 
 console.log('    Starting UI at http://localhost:5173\n');
-const ui = run(npmCmd, ['run', 'dev:local']);
+const ui = runUi();
 
 function shutdown() {
   api.kill();
