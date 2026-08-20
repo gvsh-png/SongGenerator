@@ -33,16 +33,14 @@ function apiHeaders(apiKey: string): HeadersInit {
   };
 }
 
-function buildRequestBody(model: ModelId, prompt: string, stream: boolean): Record<string, unknown> {
-  const body: Record<string, unknown> = {
+function buildRequestBody(model: ModelId, prompt: string): Record<string, unknown> {
+  return {
     model,
     messages: [{ role: 'user', content: prompt }],
-    stream,
+    stream: true,
     modalities: ['text', 'audio'],
     audio: { format: 'mp3' },
   };
-
-  return body;
 }
 
 function emptyParsedAudio(): ParsedAudio {
@@ -136,11 +134,29 @@ function extractFromChunk(chunk: unknown, parsed: ParsedAudio): void {
   }
 }
 
-function mergeParsedAudio(target: ParsedAudio, source: ParsedAudio): void {
-  target.audioChunks.push(...source.audioChunks);
-  target.audioUrls.push(...source.audioUrls);
-  target.transcriptParts.push(...source.transcriptParts);
-  target.streamErrors.push(...source.streamErrors);
+function processSseBuffer(
+  buffer: string,
+  parsed: ParsedAudio,
+  onStreamProgress: (parsed: ParsedAudio) => void,
+): string {
+  const lines = buffer.split(/\r?\n/u);
+  const remainder = lines.pop() ?? '';
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) continue;
+    const data = trimmed.slice(5).trim();
+    if (data === '[DONE]') continue;
+
+    try {
+      extractFromChunk(JSON.parse(data), parsed);
+      onStreamProgress(parsed);
+    } catch {
+      // skip malformed SSE lines
+    }
+  }
+
+  return remainder;
 }
 
 function mimeFromBytes(bytes: Uint8Array): string {
@@ -262,7 +278,7 @@ async function generateSongStreaming(
   const response = await fetch(OPENROUTER_CHAT_URL, {
     method: 'POST',
     headers: apiHeaders(apiKey),
-    body: JSON.stringify(buildRequestBody(model, prompt, true)),
+    body: JSON.stringify(buildRequestBody(model, prompt)),
     signal,
   });
 
@@ -282,46 +298,14 @@ async function generateSongStreaming(
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split(/\r?\n/u);
-    buffer = lines.pop() ?? '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const data = trimmed.slice(5).trim();
-      if (data === '[DONE]') continue;
-
-      try {
-        extractFromChunk(JSON.parse(data), parsed);
-        onStreamProgress(parsed);
-      } catch {
-        // skip malformed SSE lines
-      }
-    }
+    buffer = processSseBuffer(buffer, parsed, onStreamProgress);
   }
 
-  return parsed;
-}
-
-async function generateSongNonStreaming(
-  apiKey: string,
-  model: ModelId,
-  prompt: string,
-  signal?: AbortSignal,
-): Promise<ParsedAudio> {
-  const response = await fetch(OPENROUTER_CHAT_URL, {
-    method: 'POST',
-    headers: apiHeaders(apiKey),
-    body: JSON.stringify(buildRequestBody(model, prompt, false)),
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error(await parseApiError(response));
+  buffer += decoder.decode();
+  if (buffer.trim()) {
+    processSseBuffer(`${buffer}\n`, parsed, onStreamProgress);
   }
 
-  const parsed = emptyParsedAudio();
-  extractFromChunk(await response.json(), parsed);
   return parsed;
 }
 
@@ -364,7 +348,7 @@ export async function generateSong(
 
   updateProgress('generating', 18, 'Starting music generation…');
 
-  let parsed = await generateSongStreaming(apiKey, model, prompt, signal, (streamParsed) => {
+  const parsed = await generateSongStreaming(apiKey, model, prompt, signal, (streamParsed) => {
     const chunksReceived = streamParsed.audioChunks.length;
     const transcript = streamParsed.transcriptParts.join('');
     const elapsed = Date.now() - startTime;
@@ -382,14 +366,7 @@ export async function generateSong(
     );
   });
 
-  let audioBytes = await resolveAudioData(parsed, apiKey, signal);
-
-  if (audioBytes.length === 0 && isLyriaModel(model)) {
-    updateProgress('generating', 86, 'Retrying without streaming…');
-    const fallback = await generateSongNonStreaming(apiKey, model, prompt, signal);
-    mergeParsedAudio(parsed, fallback);
-    audioBytes = await resolveAudioData(parsed, apiKey, signal);
-  }
+  const audioBytes = await resolveAudioData(parsed, apiKey, signal);
 
   updateProgress('finalizing', 92, 'Assembling your song…');
   await delay(300);
