@@ -2,6 +2,7 @@ interface CreateActionSheetProps {
   open: boolean;
   onClose: () => void;
   onCreateSong: () => void;
+  onWriteLyrics: () => void;
   onPromptFlow: () => void;
 }
 
@@ -9,6 +10,7 @@ export function CreateActionSheet({
   open,
   onClose,
   onCreateSong,
+  onWriteLyrics,
   onPromptFlow,
 }: CreateActionSheetProps) {
   if (!open) return null;
@@ -38,13 +40,28 @@ export function CreateActionSheet({
             <span className="sheet-option-icon" aria-hidden="true">✦</span>
             <div>
               <strong>Create a song</strong>
-              <span>Go straight to the song generator</span>
+              <span>Describe your track and generate</span>
             </div>
           </button>
 
           <button
             type="button"
             className="sheet-option sheet-option--alt"
+            onClick={() => {
+              onWriteLyrics();
+              onClose();
+            }}
+          >
+            <span className="sheet-option-icon" aria-hidden="true">📝</span>
+            <div>
+              <strong>Write your lyrics</strong>
+              <span>Pick length, write lyrics, generate song</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="sheet-option"
             onClick={() => {
               onPromptFlow();
               onClose();
@@ -53,7 +70,7 @@ export function CreateActionSheet({
             <span className="sheet-option-icon" aria-hidden="true">✎</span>
             <div>
               <strong>Get a prompt &amp; create</strong>
-              <span>Build a lyrics prompt for your AI, then generate</span>
+              <span>Use an AI prompt template, then generate</span>
             </div>
           </button>
         </div>

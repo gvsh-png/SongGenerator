@@ -6,7 +6,7 @@ export type VocalType = 'instrumental' | 'male' | 'female' | 'duet' | 'choir';
 export type EnergyLevel = 'low' | 'medium' | 'high' | 'intense';
 export type Tempo = 'slow' | 'medium' | 'fast' | 'variable';
 
-export type AppView = 'home' | 'create' | 'library' | 'prompt-flow';
+export type AppView = 'home' | 'create' | 'library' | 'prompt-flow' | 'write-lyrics';
 
 export type PromptFlowStep = 'configure' | 'copy-prompt' | 'paste-lyrics' | 'confirm';
 

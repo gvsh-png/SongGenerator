@@ -4,6 +4,7 @@ import { formatDuration } from '../lib/pricing';
 interface HomeScreenProps {
   onCreateSong: () => void;
   onPromptFlow: () => void;
+  onWriteLyrics: () => void;
   onOpenLibrary: () => void;
   libraryKey: number;
 }
@@ -11,6 +12,7 @@ interface HomeScreenProps {
 export function HomeScreen({
   onCreateSong,
   onPromptFlow,
+  onWriteLyrics,
   onOpenLibrary,
 }: HomeScreenProps) {
   const recentSongs = getSongsMetadata().slice(0, 3);
@@ -21,7 +23,7 @@ export function HomeScreen({
         <p className="home-eyebrow">AI Music Studio</p>
         <h2 className="home-title">What will you create today?</h2>
         <p className="home-subtitle">
-          Generate songs with Lyria 3, or craft lyrics with your favorite AI first.
+          Generate songs with Lyria 3 — describe a vibe, write your own lyrics, or use an AI prompt.
         </p>
       </section>
 
@@ -35,7 +37,16 @@ export function HomeScreen({
           <span className="action-card-arrow" aria-hidden="true">→</span>
         </button>
 
-        <button type="button" className="action-card action-card--alt" onClick={onPromptFlow}>
+        <button type="button" className="action-card action-card--alt" onClick={onWriteLyrics}>
+          <span className="action-card-icon" aria-hidden="true">📝</span>
+          <div className="action-card-body">
+            <h3>Write your lyrics</h3>
+            <p>Choose the length, write your own lyrics, and generate the song.</p>
+          </div>
+          <span className="action-card-arrow" aria-hidden="true">→</span>
+        </button>
+
+        <button type="button" className="action-card" onClick={onPromptFlow}>
           <span className="action-card-icon" aria-hidden="true">✎</span>
           <div className="action-card-body">
             <h3>Get a prompt &amp; create</h3>
@@ -69,8 +80,8 @@ export function HomeScreen({
       <section className="home-tips">
         <h3>How it works</h3>
         <ol className="home-steps">
-          <li>Pick a path — direct creation or prompt-first workflow</li>
-          <li>Customize genre, vocals, mood, and duration</li>
+          <li>Pick a path — describe, write lyrics, or use a prompt template</li>
+          <li>Set duration, genre, and vocals</li>
           <li>Confirm cost and generate your track</li>
           <li>Listen, download, and save to your library</li>
         </ol>

@@ -84,6 +84,25 @@ export function buildPrompt(options: SongOptions): string {
   return parts.join(' ');
 }
 
+export function defaultLyricsSongOptions(): SongOptions {
+  return {
+    title: '',
+    description: '',
+    duration: 60,
+    genre: 'Pop',
+    mood: 'Uplifting',
+    tempo: 'medium',
+    energy: 'medium',
+    vocals: 'female',
+    instruments: [],
+    key: 'Any',
+    era: 'Modern',
+    structure: 'Auto',
+    lyrics: '',
+    model: 'google/lyria-3-clip-preview',
+  };
+}
+
 export function defaultSongOptions(): SongOptions {
   return {
     title: '',
