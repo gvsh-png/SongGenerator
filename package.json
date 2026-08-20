@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:local": "vite --mode selfhosted",
+    "dev:local": "node node_modules/vite/bin/vite.js --mode selfhosted",
     "local": "node scripts/start-local.mjs",
+    "local:stop": "node scripts/stop-local.mjs",
     "local:doctor": "node scripts/local-doctor.mjs",
     "local:gpu-check": "node scripts/gpu-check.mjs",
     "build": "tsc -b && vite build",
