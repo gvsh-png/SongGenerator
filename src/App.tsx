@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import type { AppView, GenerationProgress, PromptFlowState, SavedSong } from './types';
+import type { AppView, GenerationProgress, PromptFlowState, SavedSong, SongOptions } from './types';
 import { defaultPromptFlowState } from './types';
 import { ApiKeySetup } from './components/ApiKeySetup';
 import { SongForm } from './components/SongForm';
@@ -9,8 +9,10 @@ import { HomeScreen } from './components/HomeScreen';
 import { CreateActionSheet } from './components/CreateActionSheet';
 import { BottomNav } from './components/BottomNav';
 import { PromptWorkflow } from './components/PromptWorkflow';
+import { WriteLyricsForm } from './components/WriteLyricsForm';
 import { getApiKey, saveSong, clearApiKey } from './lib/storage';
-import { buildPrompt, buildPromptFromFlow, defaultSongOptions, flowToSongOptions } from './lib/prompt';
+import { buildPrompt, buildPromptFromFlow, defaultSongOptions, defaultLyricsSongOptions, flowToSongOptions } from './lib/prompt';
+import { suggestTitleFromLyrics } from './lib/titleFromLyrics';
 import { generateSong } from './lib/openrouter';
 import { estimateCost, selectCheapestModel } from './lib/pricing';
 
@@ -19,6 +21,7 @@ function App() {
   const [view, setView] = useState<AppView>('home');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [options, setOptions] = useState(defaultSongOptions());
+  const [lyricsOptions, setLyricsOptions] = useState(defaultLyricsSongOptions());
   const [promptFlow, setPromptFlow] = useState<PromptFlowState>(defaultPromptFlowState());
   const [autoModel, setAutoModel] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -91,6 +94,27 @@ function App() {
     });
   }, [options, autoModel, runGeneration]);
 
+  const handleWriteLyricsGenerate = useCallback(async () => {
+    if (!lyricsOptions.lyrics.trim()) return;
+
+    const model = selectCheapestModel(lyricsOptions.duration);
+    const title =
+      lyricsOptions.title.trim() ||
+      suggestTitleFromLyrics(lyricsOptions.lyrics, lyricsOptions.genre);
+    const finalOptions: SongOptions = {
+      ...lyricsOptions,
+      model,
+      title,
+      description: `Custom lyrics song (${lyricsOptions.genre}, ${lyricsOptions.mood})`,
+    };
+    const prompt = buildPrompt(finalOptions);
+
+    await runGeneration(prompt, model, lyricsOptions.duration, {
+      title,
+      options: finalOptions,
+    });
+  }, [lyricsOptions, runGeneration]);
+
   const handlePromptFlowConfirm = useCallback(async (flow: PromptFlowState) => {
     const model = selectCheapestModel(flow.duration);
     const songOptions = flowToSongOptions(flow);
@@ -116,6 +140,12 @@ function App() {
     setError(null);
     setPromptFlow(defaultPromptFlowState());
     setView('prompt-flow');
+  };
+
+  const openWriteLyrics = () => {
+    setError(null);
+    setLyricsOptions(defaultLyricsSongOptions());
+    setView('write-lyrics');
   };
 
   if (!hasKey) {
@@ -150,6 +180,7 @@ function App() {
             <HomeScreen
               onCreateSong={openCreate}
               onPromptFlow={openPromptFlow}
+              onWriteLyrics={openWriteLyrics}
               onOpenLibrary={() => setView('library')}
               libraryKey={libraryKey}
             />
@@ -194,6 +225,29 @@ function App() {
             </>
           )}
 
+          {view === 'write-lyrics' && (
+            <div className="page-create">
+              <div className="page-header">
+                <button type="button" className="btn btn-ghost btn-sm page-back" onClick={() => setView('home')}>
+                  ← Back
+                </button>
+                <h2>Write your lyrics</h2>
+                <p>Pick a length, write your lyrics, and generate the song.</p>
+              </div>
+              <WriteLyricsForm
+                options={lyricsOptions}
+                onChange={setLyricsOptions}
+                onSubmit={handleWriteLyricsGenerate}
+                isGenerating={isGenerating}
+              />
+              {error && (
+                <div className="error-banner" role="alert">
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
+
           {view === 'library' && (
             <div className="page-library">
               <div className="page-header">
@@ -216,6 +270,7 @@ function App() {
           onClose={() => setSheetOpen(false)}
           onCreateSong={openCreate}
           onPromptFlow={openPromptFlow}
+          onWriteLyrics={openWriteLyrics}
         />
 
         {isGenerating && progress && (
