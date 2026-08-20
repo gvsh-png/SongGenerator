@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { formatCost, formatDuration } from '../lib/pricing';
 import {
   VIDEO_PRICING,
@@ -8,8 +9,9 @@ interface MusicVideoConfirmProps {
   songTitle: string;
   songDuration: number;
   hasLyrics: boolean;
+  defaultVideoPrompt: string;
   open: boolean;
-  onConfirm: () => void;
+  onConfirm: (videoPrompt: string) => void;
   onCancel: () => void;
   isGenerating: boolean;
 }
@@ -18,14 +20,22 @@ export function MusicVideoConfirm({
   songTitle,
   songDuration,
   hasLyrics,
+  defaultVideoPrompt,
   open,
   onConfirm,
   onCancel,
   isGenerating,
 }: MusicVideoConfirmProps) {
+  const [videoPrompt, setVideoPrompt] = useState(defaultVideoPrompt);
+
+  useEffect(() => {
+    if (open) setVideoPrompt(defaultVideoPrompt);
+  }, [open, defaultVideoPrompt]);
+
   if (!open) return null;
 
   const plan = planMusicVideoClips(songDuration);
+  const trimmedPrompt = videoPrompt.trim();
 
   return (
     <div className="sheet-overlay" onClick={onCancel} role="presentation">
@@ -41,6 +51,24 @@ export function MusicVideoConfirm({
         <p className="sheet-subtitle">
           Full video for &ldquo;{songTitle}&rdquo;
         </p>
+
+        <div className="form-section confirm-prompt-section">
+          <label className="field-label" htmlFor="mv-prompt">
+            Video prompt
+          </label>
+          <textarea
+            id="mv-prompt"
+            className="text-area text-area--video-prompt"
+            value={videoPrompt}
+            onChange={(e) => setVideoPrompt(e.target.value)}
+            placeholder="Describe the visuals for your music video…"
+            rows={5}
+            disabled={isGenerating}
+          />
+          <p className="hint">
+            Edit this to steer the look and scenes. Each clip uses your prompt plus an opening, middle, or finale note.
+          </p>
+        </div>
 
         <div className="cost-preview">
           <div className="cost-row">
@@ -94,8 +122,8 @@ export function MusicVideoConfirm({
           <button
             type="button"
             className="btn btn-primary btn-full"
-            onClick={onConfirm}
-            disabled={isGenerating}
+            onClick={() => onConfirm(trimmedPrompt)}
+            disabled={isGenerating || !trimmedPrompt}
           >
             {isGenerating ? 'Generating…' : `Confirm · ${formatCost(plan.estimatedCost)}`}
           </button>

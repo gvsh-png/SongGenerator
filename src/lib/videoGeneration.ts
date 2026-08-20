@@ -167,6 +167,7 @@ async function generateClipsParallel(
   concurrency: number,
   signal: AbortSignal | undefined,
   onClipProgress: (completed: number, inFlight: number) => void,
+  videoPrompt?: string,
 ): Promise<{ blobs: Blob[]; totalCost: number }> {
   const results: ClipResult[] = new Array(plan.clipCount);
   let completed = 0;
@@ -185,7 +186,7 @@ async function generateClipsParallel(
       onClipProgress(completed, inFlight);
 
       const clipDuration = plan.clipDurations[index];
-      const prompt = buildMusicVideoPromptForClip(song, index, plan.clipCount);
+      const prompt = buildMusicVideoPromptForClip(song, index, plan.clipCount, videoPrompt);
 
       try {
         results[index] = await generateSingleClip(
@@ -221,6 +222,7 @@ export async function generateMusicVideo(
   song: SavedSong,
   callbacks: VideoGenerationCallbacks,
   signal?: AbortSignal,
+  videoPrompt?: string,
 ): Promise<GenerateMusicVideoResult> {
   const plan = planMusicVideoClips(song.duration);
   const startTime = Date.now();
@@ -267,6 +269,7 @@ export async function generateMusicVideo(
           : `Finished clip batch (${done}/${plan.clipCount})`;
       update('generating', batchProgress, msg, done);
     },
+    videoPrompt,
   );
 
   update('finalizing', 88, 'Stitching clips into full music video…');
