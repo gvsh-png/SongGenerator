@@ -6,7 +6,7 @@ import {
   setLocalApiKey,
   setLocalBaseUrl,
 } from '../lib/storage';
-import { getAppBranding, getDefaultLocalBaseUrl } from '../lib/config';
+import { getAppBranding, getDefaultLocalBaseUrl, normalizeLocalApiBase } from '../lib/config';
 import { testLocalConnection } from '../lib/providers/localGenerate';
 
 interface LocalSetupProps {
@@ -32,7 +32,7 @@ export function LocalSetup({ onReady }: LocalSetupProps) {
   const handleSave = async () => {
     const trimmed = baseUrl.trim();
     if (!trimmed) return;
-    setLocalBaseUrl(trimmed);
+    setLocalBaseUrl(normalizeLocalApiBase(trimmed));
     setLocalApiKey(apiKey);
     onReady();
   };
@@ -52,12 +52,14 @@ export function LocalSetup({ onReady }: LocalSetupProps) {
           type="url"
           value={baseUrl}
           onChange={(e) => setBaseUrl(e.target.value)}
-          placeholder="http://localhost:8787"
+          placeholder="/local-api"
           className="text-input"
         />
         <p className="hint">
-          Point this at your self-hosted backend. Default: run{' '}
-          <code className="inline-code">npm run local-server</code> in this repo.
+          Use <code className="inline-code">/local-api</code> while running{' '}
+          <code className="inline-code">npm run dev:local</code> (Vite proxies to port 8787). On
+          your own machine with the app and server on the same PC,{' '}
+          <code className="inline-code">http://localhost:8787</code> also works.
         </p>
 
         <label className="field-label" htmlFor="local-api-key">

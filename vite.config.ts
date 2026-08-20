@@ -1,6 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+const localApiProxy = {
+  '/local-api': {
+    target: 'http://localhost:8787',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/local-api/, ''),
+    timeout: 600_000,
+  },
+};
+
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
   optimizeDeps: {
@@ -10,14 +19,9 @@ export default defineConfig(({ mode }) => ({
     outDir: mode === 'selfhosted' ? 'dist-local' : 'dist',
   },
   server: {
-    proxy: mode === 'selfhosted'
-      ? {
-          '/local-api': {
-            target: 'http://localhost:8787',
-            changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/local-api/, ''),
-          },
-        }
-      : undefined,
+    proxy: mode === 'selfhosted' ? localApiProxy : undefined,
+  },
+  preview: {
+    proxy: mode === 'selfhosted' ? localApiProxy : undefined,
   },
 }));

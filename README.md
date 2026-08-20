@@ -26,6 +26,13 @@ npm run build    # → dist/
 
 ## Local / self-hosted edition
 
+**Branch: `self-hosted`**
+
+```bash
+git checkout self-hosted
+npm install
+```
+
 Run your own model with no OpenRouter billing or Google content filters (you control the backend).
 
 ```bash
