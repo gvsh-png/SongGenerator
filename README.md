@@ -1,5 +1,7 @@
 # Lyria Studio
 
+> **Branches:** `main` = cloud edition (OpenRouter / Lyria). **`self-hosted`** = local edition (your own API server). Check out the branch you need.
+
 A minimal, mobile-first AI song creation app. Two editions:
 
 | Edition | Command | Backend |
