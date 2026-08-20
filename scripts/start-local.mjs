@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { pythonLabel, requirePython } from './resolve-python.mjs';
+import { pythonLabel, requirePython, runPython } from './resolve-python.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const prefix = requirePython();
@@ -72,7 +72,14 @@ if (!health) {
   process.exit(1);
 }
 
-console.log(`    API ready: ${health.message ?? health.status}`);
+console.log(`    API ready: ${health.message ?? health.status} (${health.device ?? '?'})`);
+if (health.device === 'cpu') {
+  const cudaProbe = runPython(prefix, ['-c', 'import torch; print(torch.cuda.is_available())']);
+  if ((cudaProbe.stdout ?? '').trim() === 'True') {
+    console.warn('\n    WARNING: CUDA is available but the server started on CPU.');
+    console.warn('    Press Ctrl+C and run npm run local again to use your GPU.\n');
+  }
+}
 if (health.status === 'loading') {
   console.log('    Model still loading — generation may fail until ready.');
 }

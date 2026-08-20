@@ -8,6 +8,7 @@
     "dev:local": "vite --mode selfhosted",
     "local": "node scripts/start-local.mjs",
     "local:doctor": "node scripts/local-doctor.mjs",
+    "local:gpu-check": "node scripts/gpu-check.mjs",
     "build": "tsc -b && vite build",
     "build:local": "tsc -b && vite build --mode selfhosted",
     "local-server": "node local-server/index.js",
