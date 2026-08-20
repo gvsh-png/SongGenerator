@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:local": "vite --mode selfhosted",
+    "local": "bash scripts/start-local.sh",
     "build": "tsc -b && vite build",
     "build:local": "tsc -b && vite build --mode selfhosted",
     "local-server": "node local-server/index.js",
@@ -15,7 +16,7 @@
     "local-server:real": "python3 local-server/server.py",
     "lint": "oxlint",
     "preview": "vite preview",
-    "preview:local": "vite preview --outDir dist-local"
+    "preview:local": "vite preview --mode selfhosted --outDir dist-local"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",

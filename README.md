@@ -36,11 +36,12 @@ npm install
 Run your own model with no OpenRouter billing or Google content filters (you control the backend).
 
 ```bash
-# Terminal 1 — local API (mock mode for UI testing)
-npm run local-server:mock
+# One command — MusicGen API + UI (recommended)
+npm run local
 
-# Terminal 2 — local frontend
-npm run dev:local
+# Or two terminals:
+npm run local-server:real   # terminal 1 — MusicGen on :8787
+npm run dev:local           # terminal 2 — UI on :5173
 ```
 
 Set server URL to `http://localhost:8787` in the app setup screen.

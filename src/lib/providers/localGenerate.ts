@@ -1,6 +1,6 @@
 import type { GenerationProgress, ModelId } from '../../types';
 import type { GenerateResult } from '../openrouter';
-import { resolveLocalApiBase } from '../config';
+import { isBrowserLocalHost, LOCAL_API_PROXY_PATH, LOCAL_DIRECT_URL, resolveLocalApiBase } from '../config';
 import { getLocalApiKey, getLocalBaseUrl } from '../storage';
 import type { SongGenerationCallbacks } from './types';
 
@@ -27,7 +27,7 @@ function toDataUrl(base64: string, mimeType = 'audio/mpeg'): string {
   return `data:${mimeType};base64,${cleaned}`;
 }
 
-function formatFetchError(error: unknown, baseUrl: string): string {
+function formatFetchError(error: unknown, baseUrl: string, triedUrls?: string[]): string {
   const message = error instanceof Error ? error.message : String(error);
   const isNetworkError =
     error instanceof TypeError ||
@@ -36,41 +36,80 @@ function formatFetchError(error: unknown, baseUrl: string): string {
 
   if (!isNetworkError) return message;
 
+  const targets = triedUrls?.length ? triedUrls.join(', ') : baseUrl;
+
+  if (baseUrl === LOCAL_API_PROXY_PATH || baseUrl.startsWith('/')) {
+    return `Could not reach the local server at ${targets}. Run npm run local (starts API + UI) or npm run local-server:real in a separate terminal. Use npm run dev:local — not a static build — so /local-api can proxy.`;
+  }
+
   if (baseUrl.startsWith('http://') && typeof window !== 'undefined') {
-    const onHttps = window.location.protocol === 'https:';
-    const notLocalHost =
-      window.location.hostname !== 'localhost' &&
-      window.location.hostname !== '127.0.0.1';
-    if (onHttps) {
+    if (window.location.protocol === 'https:') {
       return 'Blocked by mixed content (HTTPS page calling HTTP API). Use /local-api as the server URL so Vite proxies the request.';
     }
-    if (notLocalHost) {
-      return 'Could not reach the server. When using a remote or forwarded preview, set the URL to /local-api (not http://localhost:8787).';
+    if (!isBrowserLocalHost()) {
+      return `Could not reach ${targets}. On a remote preview use /local-api with npm run dev:local, not ${LOCAL_DIRECT_URL}.`;
     }
   }
 
-  return 'Could not reach the local server. Start it with npm run local-server:real and use /local-api as the URL during dev.';
+  return `Could not reach the local server at ${targets}. Start it with npm run local-server:real (or npm run local to start both).`;
+}
+
+function localApiCandidates(stored?: string | null): string[] {
+  const primary = resolveLocalApiBase(stored);
+  const fallbacks: string[] = [];
+  if (primary === LOCAL_API_PROXY_PATH) {
+    fallbacks.push(LOCAL_DIRECT_URL);
+  } else if (primary === LOCAL_DIRECT_URL && import.meta.env.DEV) {
+    fallbacks.push(LOCAL_API_PROXY_PATH);
+  }
+  return [...new Set([primary, ...fallbacks])];
+}
+
+async function fetchLocal(path: string, init?: RequestInit): Promise<Response> {
+  const stored = getLocalBaseUrl();
+  const candidates = localApiCandidates(stored);
+  let lastError: unknown;
+
+  for (const base of candidates) {
+    try {
+      const response = await fetch(`${base}${path}`, init);
+      if (response.ok || response.status < 500) {
+        return response;
+      }
+      lastError = new Error(`Server returned ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error(formatFetchError(new TypeError('Failed to fetch'), candidates[0], candidates));
 }
 
 export async function testLocalConnection(baseUrl?: string): Promise<{ ok: boolean; message: string }> {
-  const resolved = resolveLocalApiBase(baseUrl ?? getLocalBaseUrl());
-  const url = `${resolved}/health`;
-  try {
-    const response = await fetch(url, { headers: localHeaders() });
-    if (!response.ok) {
-      return { ok: false, message: `Server returned ${response.status}` };
+  const candidates = localApiCandidates(baseUrl ?? getLocalBaseUrl());
+  let lastError: unknown;
+
+  for (const resolved of candidates) {
+    try {
+      const response = await fetch(`${resolved}/health`, { headers: localHeaders() });
+      if (!response.ok) {
+        lastError = new Error(`Server returned ${response.status}`);
+        continue;
+      }
+      const data = (await response.json()) as { status?: string; message?: string };
+      if (data.status === 'ok') {
+        return { ok: true, message: `${data.message ?? 'Connected'} (${resolved})` };
+      }
+      lastError = new Error(data.message ?? 'Unexpected health response');
+    } catch (error) {
+      lastError = error;
     }
-    const data = (await response.json()) as { status?: string; message?: string };
-    if (data.status === 'ok') {
-      return { ok: true, message: data.message ?? 'Connected' };
-    }
-    return { ok: false, message: data.message ?? 'Unexpected health response' };
-  } catch (error) {
-    return {
-      ok: false,
-      message: formatFetchError(error, resolved),
-    };
   }
+
+  return {
+    ok: false,
+    message: formatFetchError(lastError, candidates[0], candidates),
+  };
 }
 
 export async function generateSongLocal(
@@ -80,9 +119,6 @@ export async function generateSongLocal(
   callbacks: SongGenerationCallbacks,
   signal?: AbortSignal,
 ): Promise<GenerateResult> {
-  const baseUrl = resolveLocalApiBase(getLocalBaseUrl());
-  if (!baseUrl) throw new Error('Local server URL is not configured.');
-
   const startTime = Date.now();
   const estimatedTotal = Math.max(30000, duration * 1000);
 
@@ -104,7 +140,7 @@ export async function generateSongLocal(
 
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}/api/generate`, {
+    response = await fetchLocal('/api/generate', {
       method: 'POST',
       headers: localHeaders(),
       body: JSON.stringify({
@@ -116,7 +152,8 @@ export async function generateSongLocal(
       signal,
     });
   } catch (error) {
-    throw new Error(formatFetchError(error, baseUrl));
+    const candidates = localApiCandidates(getLocalBaseUrl());
+    throw new Error(formatFetchError(error, candidates[0], candidates));
   }
 
   if (!response.ok) {

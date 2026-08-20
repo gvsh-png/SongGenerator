@@ -19,9 +19,11 @@ export default defineConfig(({ mode }) => ({
     outDir: mode === 'selfhosted' ? 'dist-local' : 'dist',
   },
   server: {
+    host: true,
     proxy: mode === 'selfhosted' ? localApiProxy : undefined,
   },
   preview: {
+    host: true,
     proxy: mode === 'selfhosted' ? localApiProxy : undefined,
   },
 }));

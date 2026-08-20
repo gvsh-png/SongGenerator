@@ -52,14 +52,13 @@ export function LocalSetup({ onReady }: LocalSetupProps) {
           type="url"
           value={baseUrl}
           onChange={(e) => setBaseUrl(e.target.value)}
-          placeholder="/local-api"
+          placeholder="http://localhost:8787"
           className="text-input"
         />
         <p className="hint">
-          Use <code className="inline-code">/local-api</code> while running{' '}
-          <code className="inline-code">npm run dev:local</code> (Vite proxies to port 8787). On
-          your own machine with the app and server on the same PC,{' '}
-          <code className="inline-code">http://localhost:8787</code> also works.
+          On your PC defaults to <code className="inline-code">http://localhost:8787</code>. Remote
+          previews use <code className="inline-code">/local-api</code>. Easiest: run{' '}
+          <code className="inline-code">npm run local</code> to start API + UI together.
         </p>
 
         <label className="field-label" htmlFor="local-api-key">
