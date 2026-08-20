@@ -6,14 +6,15 @@
   "scripts": {
     "dev": "vite",
     "dev:local": "vite --mode selfhosted",
-    "local": "bash scripts/start-local.sh",
+    "local": "node scripts/start-local.mjs",
+    "local:doctor": "node scripts/local-doctor.mjs",
     "build": "tsc -b && vite build",
     "build:local": "tsc -b && vite build --mode selfhosted",
     "local-server": "node local-server/index.js",
     "local-server:mock": "LOCAL_MOCK=1 node local-server/index.js",
     "local-server:install": "python3 -m pip install -r local-server/requirements.txt",
     "local-server:install-gpu": "bash local-server/install-gpu.sh",
-    "local-server:real": "python3 local-server/server.py",
+    "local-server:real": "node scripts/run-python-server.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "preview:local": "vite preview --mode selfhosted --outDir dist-local"

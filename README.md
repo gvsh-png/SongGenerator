@@ -29,19 +29,12 @@ npm run build    # → dist/
 **Branch: `self-hosted`**
 
 ```bash
+cd SongGenerator          # ← folder where you ran git clone (must contain package.json)
 git checkout self-hosted
 npm install
-```
-
-Run your own model with no OpenRouter billing or Google content filters (you control the backend).
-
-```bash
-# One command — MusicGen API + UI (recommended)
-npm run local
-
-# Or two terminals:
-npm run local-server:real   # terminal 1 — MusicGen on :8787
-npm run dev:local           # terminal 2 — UI on :5173
+npm run local-server:install-gpu   # once, NVIDIA GPU
+npm run local                      # starts API + UI together
+npm run local:doctor               # if connection fails — shows what's wrong
 ```
 
 Set server URL to `http://localhost:8787` in the app setup screen.
