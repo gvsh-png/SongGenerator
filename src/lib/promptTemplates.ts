@@ -1,5 +1,8 @@
 import type { EnergyLevel, Tempo, VocalType } from '../types';
 
+export const ORIGINAL_SONG_DIRECTIVE =
+  'Create an original, family-friendly song. Do not imitate any real artist, celebrity, or copyrighted recording.';
+
 export interface LyricsPromptInput {
   genre: string;
   vocals: VocalType;
@@ -78,7 +81,7 @@ Do not include production notes — only lyrics and section labels.`;
 }
 
 export function buildSongSpecPrompt(lyrics: string, genre: string, duration: number): string {
-  return `Use these lyrics to create a ${duration}-second ${genre} song:
+  return `${ORIGINAL_SONG_DIRECTIVE} Use these original lyrics for a ${duration}-second ${genre} song:
 
 ${lyrics.trim()}
 

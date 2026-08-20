@@ -14,6 +14,7 @@ import { getApiKey, saveSong, clearApiKey } from './lib/storage';
 import { buildPrompt, buildPromptFromFlow, defaultSongOptions, defaultLyricsSongOptions, flowToSongOptions } from './lib/prompt';
 import { suggestTitleFromLyrics } from './lib/titleFromLyrics';
 import { generateSong } from './lib/openrouter';
+import { humanizeGenerationError } from './lib/generationErrors';
 import { estimateCost, selectCheapestModel } from './lib/pricing';
 
 function App() {
@@ -73,7 +74,7 @@ function App() {
       if (err instanceof DOMException && err.name === 'AbortError') {
         setError('Generation cancelled.');
       } else {
-        setError(err instanceof Error ? err.message : 'Generation failed.');
+        setError(humanizeGenerationError(err instanceof Error ? err.message : 'Generation failed.'));
       }
     } finally {
       setIsGenerating(false);

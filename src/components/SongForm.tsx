@@ -91,6 +91,9 @@ export function SongForm({
           placeholder="A dreamy lo-fi beat with soft piano, rain sounds, and a nostalgic summer vibe…"
           rows={4}
         />
+        <p className="hint">
+          Describe the style and mood — avoid naming real artists or songs. Google may block explicit or violent content.
+        </p>
       </div>
 
       <div className="form-section">
