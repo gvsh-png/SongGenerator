@@ -1,5 +1,5 @@
 import type { SavedSong } from '../types';
-import { isLocalMode } from './config';
+import { getDefaultLocalBaseUrl, isLocalMode, normalizeLocalApiBase } from './config';
 
 const API_KEY_STORAGE = 'lyria_api_key';
 const LOCAL_BASE_URL_STORAGE = 'lyria_local_base_url';
@@ -44,7 +44,7 @@ export function getLocalBaseUrl(): string | null {
 }
 
 export function setLocalBaseUrl(url: string): void {
-  localStorage.setItem(LOCAL_BASE_URL_STORAGE, normalizeLocalBaseUrl(url));
+  localStorage.setItem(LOCAL_BASE_URL_STORAGE, normalizeLocalApiBase(url));
 }
 
 export function getLocalApiKey(): string | null {
@@ -64,6 +64,22 @@ export function normalizeLocalBaseUrl(url: string): string {
 export function clearLocalConfig(): void {
   localStorage.removeItem(LOCAL_BASE_URL_STORAGE);
   localStorage.removeItem(LOCAL_API_KEY_STORAGE);
+}
+
+/** Seed /local-api and migrate legacy localhost URLs so local mode works out of the box. */
+export function ensureLocalConfig(): void {
+  if (!isLocalMode()) return;
+
+  const stored = getLocalBaseUrl();
+  if (!stored) {
+    setLocalBaseUrl(getDefaultLocalBaseUrl());
+    return;
+  }
+
+  const normalized = normalizeLocalApiBase(stored);
+  if (normalized !== stored) {
+    setLocalBaseUrl(normalized);
+  }
 }
 
 export function isAppConfigured(): boolean {
