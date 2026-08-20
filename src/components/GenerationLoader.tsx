@@ -4,29 +4,22 @@ import { formatTimeRemaining } from '../lib/pricing';
 interface GenerationLoaderProps {
   progress: GenerationProgress;
   onCancel?: () => void;
+  title?: string;
 }
 
 const PHASES = [
   { key: 'preparing', label: 'Prepare' },
   { key: 'connecting', label: 'Connect' },
+  { key: 'submitting', label: 'Submit' },
   { key: 'generating', label: 'Generate' },
+  { key: 'polling', label: 'Queue' },
+  { key: 'downloading', label: 'Download' },
   { key: 'finalizing', label: 'Finalize' },
 ] as const;
 
-function phaseIndex(phase: GenerationProgress['phase']): number {
-  const map: Record<string, number> = {
-    preparing: 0,
-    connecting: 1,
-    generating: 2,
-    finalizing: 3,
-    complete: 4,
-  };
-  return map[phase] ?? 0;
-}
-
-export function GenerationLoader({ progress, onCancel }: GenerationLoaderProps) {
-  const currentIdx = phaseIndex(progress.phase);
+export function GenerationLoader({ progress, onCancel, title = 'Creating your song' }: GenerationLoaderProps) {
   const elapsedSec = Math.floor(progress.elapsedMs / 1000);
+  const showRemaining = ['generating', 'polling', 'downloading'].includes(progress.phase);
 
   return (
     <div className="loader-overlay" role="status" aria-live="polite">
@@ -49,7 +42,7 @@ export function GenerationLoader({ progress, onCancel }: GenerationLoaderProps) 
           </div>
         </div>
 
-        <h2 className="loader-title">Creating your song</h2>
+        <h2 className="loader-title">{title}</h2>
         <p className="loader-message">{progress.message}</p>
 
         <div className="loader-progress-bar">
@@ -61,19 +54,28 @@ export function GenerationLoader({ progress, onCancel }: GenerationLoaderProps) 
 
         <div className="loader-meta">
           <span>{elapsedSec}s elapsed</span>
-          {progress.phase === 'generating' && progress.estimatedRemainingMs > 0 && (
+          {showRemaining && progress.estimatedRemainingMs > 0 && (
             <span>{formatTimeRemaining(progress.estimatedRemainingMs)}</span>
           )}
         </div>
 
-        <div className="loader-steps">
-          {PHASES.map((step, i) => {
+        <div className="loader-steps loader-steps--compact">
+          {PHASES.filter((step) => {
+            const videoPhases = ['submitting', 'polling', 'downloading'];
+            const audioPhases = ['preparing', 'connecting', 'generating', 'finalizing'];
+            const activeSet = videoPhases.includes(progress.phase)
+              ? ['submitting', 'polling', 'generating', 'downloading']
+              : audioPhases;
+            return activeSet.includes(step.key);
+          }).map((step, _i, arr) => {
+            const currentIdx = arr.findIndex((s) => s.key === progress.phase);
+            const stepIdx = arr.findIndex((s) => s.key === step.key);
             const status =
-              i < currentIdx ? 'done' : i === currentIdx ? 'active' : 'pending';
+              stepIdx < currentIdx ? 'done' : stepIdx === currentIdx ? 'active' : 'pending';
             return (
               <div key={step.key} className={`loader-step loader-step--${status}`}>
                 <div className="loader-step-dot">
-                  {status === 'done' ? '✓' : i + 1}
+                  {status === 'done' ? '✓' : stepIdx + 1}
                 </div>
                 <span className="loader-step-label">{step.label}</span>
               </div>

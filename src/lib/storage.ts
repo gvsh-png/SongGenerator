@@ -3,18 +3,22 @@ import type { SavedSong } from '../types';
 const API_KEY_STORAGE = 'lyria_api_key';
 const SONGS_STORAGE = 'lyria_songs';
 const DB_NAME = 'lyria-songs-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const AUDIO_STORE = 'audio';
+const VIDEO_STORE = 'videos';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = () => {
-      const db = request.result;
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains(AUDIO_STORE)) {
         db.createObjectStore(AUDIO_STORE);
+      }
+      if (!db.objectStoreNames.contains(VIDEO_STORE)) {
+        db.createObjectStore(VIDEO_STORE);
       }
     };
   });
@@ -70,6 +74,45 @@ export async function getSongAudio(id: string): Promise<string | null> {
   });
 }
 
+export async function saveSongVideo(songId: string, blob: Blob): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(VIDEO_STORE, 'readwrite');
+    tx.objectStore(VIDEO_STORE).put(blob, songId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getSongVideo(songId: string): Promise<Blob | null> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VIDEO_STORE, 'readonly');
+    const request = tx.objectStore(VIDEO_STORE).get(songId);
+    request.onsuccess = () => resolve((request.result as Blob) ?? null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function deleteSongVideo(songId: string): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(VIDEO_STORE, 'readwrite');
+    tx.objectStore(VIDEO_STORE).delete(songId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export function updateSongMetadata(
+  songId: string,
+  patch: Partial<Omit<SavedSong, 'audioDataUrl'>>,
+): void {
+  const songs = getSongsMetadata();
+  const updated = songs.map((s) => (s.id === songId ? { ...s, ...patch } : s));
+  saveSongsMetadata(updated);
+}
+
 export async function loadSong(id: string): Promise<SavedSong | null> {
   const meta = getSongsMetadata().find((s) => s.id === id);
   if (!meta) return null;
@@ -81,8 +124,9 @@ export async function loadSong(id: string): Promise<SavedSong | null> {
 export async function deleteSong(id: string): Promise<void> {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(AUDIO_STORE, 'readwrite');
+    const tx = db.transaction([AUDIO_STORE, VIDEO_STORE], 'readwrite');
     tx.objectStore(AUDIO_STORE).delete(id);
+    tx.objectStore(VIDEO_STORE).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

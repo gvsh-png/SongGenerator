@@ -43,6 +43,16 @@ export interface PromptFlowState {
   customTitle: string;
 }
 
+export type VideoModelId = 'google/veo-3.1-lite';
+
+export interface MusicVideoMeta {
+  duration: number;
+  cost: number;
+  createdAt: number;
+  resolution: string;
+  model: VideoModelId;
+}
+
 export interface SavedSong {
   id: string;
   title: string;
@@ -54,6 +64,7 @@ export interface SavedSong {
   cost: number;
   duration: number;
   createdAt: number;
+  musicVideo?: MusicVideoMeta;
 }
 
 export type GenerationPhase =
@@ -63,7 +74,10 @@ export type GenerationPhase =
   | 'generating'
   | 'finalizing'
   | 'complete'
-  | 'error';
+  | 'error'
+  | 'submitting'
+  | 'polling'
+  | 'downloading';
 
 export interface GenerationProgress {
   phase: GenerationPhase;

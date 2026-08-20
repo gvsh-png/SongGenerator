@@ -648,6 +648,18 @@ svg {
   gap: 10px;
 }
 
+.confirm-sheet {
+  max-width: 420px;
+}
+
+.confirm-sheet .confirm-actions {
+  margin-top: 8px;
+}
+
+.loader-steps--compact .loader-step-label {
+  font-size: 0.58rem;
+}
+
 /* ── API Key Setup ── */
 
 .api-key-setup {
@@ -914,6 +926,17 @@ svg {
   background: var(--accent-dim);
 }
 
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--accent);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--text-muted);
@@ -1085,6 +1108,19 @@ svg {
 .song-player {
   width: 100%;
   border-radius: var(--radius-sm);
+}
+
+.song-video-player {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: #000;
+  max-height: 280px;
+}
+
+.song-cost-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .song-transcript {
