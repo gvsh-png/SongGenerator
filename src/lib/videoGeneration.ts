@@ -4,6 +4,8 @@ import {
   buildMusicVideoPromptForClip,
   planMusicVideoClips,
   estimateVideoGenerationTimeMs,
+  PARALLEL_CLIP_CONCURRENCY,
+  type MusicVideoPlan,
 } from './musicVideo';
 import { concatVideoClips, assembleMusicVideo } from './videoConcat';
 import { getLyricsForSong } from './lyrics';
@@ -153,6 +155,67 @@ async function generateSingleClip(
   return { blob, cost };
 }
 
+interface ClipResult {
+  blob: Blob;
+  cost: number;
+}
+
+async function generateClipsParallel(
+  apiKey: string,
+  song: SavedSong,
+  plan: MusicVideoPlan,
+  concurrency: number,
+  signal: AbortSignal | undefined,
+  onClipProgress: (completed: number, inFlight: number) => void,
+): Promise<{ blobs: Blob[]; totalCost: number }> {
+  const results: ClipResult[] = new Array(plan.clipCount);
+  let completed = 0;
+  let nextIndex = 0;
+  let inFlight = 0;
+
+  const worker = async (): Promise<void> => {
+    while (true) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= plan.clipCount) break;
+
+      inFlight += 1;
+      onClipProgress(completed, inFlight);
+
+      const clipDuration = plan.clipDurations[index];
+      const prompt = buildMusicVideoPromptForClip(song, index, plan.clipCount);
+
+      try {
+        results[index] = await generateSingleClip(
+          apiKey,
+          prompt,
+          clipDuration,
+          () => {},
+          signal,
+        );
+      } finally {
+        inFlight -= 1;
+        completed += 1;
+        onClipProgress(completed, inFlight);
+      }
+    }
+  };
+
+  const workerCount = Math.min(concurrency, plan.clipCount);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+  if (results.some((r) => !r)) {
+    throw new Error('One or more video clips failed to generate.');
+  }
+
+  return {
+    blobs: results.map((r) => r.blob),
+    totalCost: results.reduce((sum, r) => sum + r.cost, 0),
+  };
+}
+
 export async function generateMusicVideo(
   apiKey: string,
   song: SavedSong,
@@ -162,13 +225,13 @@ export async function generateMusicVideo(
   const plan = planMusicVideoClips(song.duration);
   const startTime = Date.now();
   const estimatedTotal = estimateVideoGenerationTimeMs(plan.clipCount);
-  let totalCost = 0;
-  const clipBlobs: Blob[] = [];
+  let completedClips = 0;
 
   const update = (
     phase: GenerationProgress['phase'],
     progress: number,
     message: string,
+    clipsDone = completedClips,
   ) => {
     const elapsedMs = Date.now() - startTime;
     callbacks.onProgress({
@@ -177,37 +240,34 @@ export async function generateMusicVideo(
       message,
       elapsedMs,
       estimatedRemainingMs: Math.max(0, estimatedTotal - elapsedMs),
-      chunksReceived: clipBlobs.length,
+      chunksReceived: clipsDone,
       transcript: '',
     });
   };
 
-  update('submitting', 5, `Planning ${plan.clipCount} clip${plan.clipCount > 1 ? 's' : ''}…`);
+  const parallel = Math.min(PARALLEL_CLIP_CONCURRENCY, plan.clipCount);
+  update(
+    'submitting',
+    5,
+    `Planning ${plan.clipCount} clip${plan.clipCount > 1 ? 's' : ''} (${parallel} at a time)…`,
+  );
 
-  for (let i = 0; i < plan.clipDurations.length; i++) {
-    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-
-    const clipDuration = plan.clipDurations[i];
-    const clipProgressBase = 10 + (i / plan.clipCount) * 75;
-    const prompt = buildMusicVideoPromptForClip(song, i, plan.clipCount);
-
-    update(
-      'generating',
-      clipProgressBase,
-      `Generating clip ${i + 1} of ${plan.clipCount} (${clipDuration}s)…`,
-    );
-
-    const { blob, cost } = await generateSingleClip(
-      apiKey,
-      prompt,
-      clipDuration,
-      (msg) => update('generating', clipProgressBase + 5, `Clip ${i + 1}/${plan.clipCount}: ${msg}`),
-      signal,
-    );
-
-    clipBlobs.push(blob);
-    totalCost += cost;
-  }
+  const { blobs: clipBlobs, totalCost } = await generateClipsParallel(
+    apiKey,
+    song,
+    plan,
+    PARALLEL_CLIP_CONCURRENCY,
+    signal,
+    (done, inFlight) => {
+      completedClips = done;
+      const batchProgress = 10 + (done / plan.clipCount) * 75;
+      const msg =
+        inFlight > 0
+          ? `Generating ${inFlight} clip${inFlight > 1 ? 's' : ''} in parallel… (${done}/${plan.clipCount} done)`
+          : `Finished clip batch (${done}/${plan.clipCount})`;
+      update('generating', batchProgress, msg, done);
+    },
+  );
 
   update('finalizing', 88, 'Stitching clips into full music video…');
 

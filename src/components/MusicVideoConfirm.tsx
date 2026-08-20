@@ -57,7 +57,7 @@ export function MusicVideoConfirm({
           </div>
           <div className="cost-row">
             <span className="cost-label">Clips to generate</span>
-            <span className="cost-value">{plan.clipCount} × up to 8s</span>
+            <span className="cost-value">{plan.clipCount} × up to 8s (4 parallel)</span>
           </div>
           <div className="cost-row">
             <span className="cost-label">Includes</span>
@@ -78,7 +78,7 @@ export function MusicVideoConfirm({
             <span className="cost-value cost-value--price">{formatCost(plan.estimatedCost)}</span>
           </div>
           <p className="cost-hint">
-            Builds one complete music video: your song audio, AI visuals, and lyrics combined into a single downloadable MP4.
+            Clips render in parallel (4 at a time) for faster generation, then your song audio and lyrics are combined into one MP4.
           </p>
         </div>
 

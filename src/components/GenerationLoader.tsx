@@ -20,6 +20,8 @@ const PHASES = [
 export function GenerationLoader({ progress, onCancel, title = 'Creating your song' }: GenerationLoaderProps) {
   const elapsedSec = Math.floor(progress.elapsedMs / 1000);
   const showRemaining = ['generating', 'polling', 'downloading'].includes(progress.phase);
+  const isVideo = title.toLowerCase().includes('music video');
+  const chunkUnit = isVideo ? 'clip' : 'audio chunk';
 
   return (
     <div className="loader-overlay" role="status" aria-live="polite">
@@ -85,7 +87,7 @@ export function GenerationLoader({ progress, onCancel, title = 'Creating your so
 
         {progress.chunksReceived > 0 && (
           <p className="loader-chunks">
-            Received {progress.chunksReceived} audio chunks
+            {progress.chunksReceived} {chunkUnit}{progress.chunksReceived !== 1 ? 's' : ''} completed
           </p>
         )}
 

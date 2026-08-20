@@ -11,6 +11,9 @@ export const CLIP_MAX_SECONDS = 8;
 
 export const MAX_MUSIC_VIDEO_SECONDS = 120;
 
+/** How many video clips to generate at the same time */
+export const PARALLEL_CLIP_CONCURRENCY = 4;
+
 export const VIDEO_PRICING = {
   model: VIDEO_MODEL,
   label: 'Veo 3.1 Lite',
@@ -95,5 +98,6 @@ export function buildMusicVideoPromptForClip(
 }
 
 export function estimateVideoGenerationTimeMs(clipCount: number): number {
-  return clipCount * 90000 + 60000;
+  const batches = Math.ceil(clipCount / PARALLEL_CLIP_CONCURRENCY);
+  return batches * 90000 + 60000;
 }
