@@ -706,6 +706,63 @@ svg {
   text-align: center;
 }
 
+.setup-card--wide {
+  max-width: 480px;
+  text-align: left;
+}
+
+.setup-card--wide h1,
+.setup-card--wide .setup-subtitle {
+  text-align: center;
+}
+
+.setup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.setup-status {
+  margin-top: 12px;
+  font-size: 0.875rem;
+}
+
+.setup-status--ok {
+  color: var(--success, #3ecf8e);
+}
+
+.setup-status--err {
+  color: var(--danger, #ff6b6b);
+}
+
+.setup-docs {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+
+.setup-docs h3 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.setup-docs p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.inline-code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.82em;
+  background: var(--bg);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
 .setup-icon {
   font-size: 3rem;
   color: var(--accent);

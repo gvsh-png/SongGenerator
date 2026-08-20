@@ -1,5 +1,6 @@
 import type { ModelId } from '../types';
 import { MODEL_PRICING, formatCost, formatDuration, selectCheapestModel } from '../lib/pricing';
+import { isLocalMode } from '../lib/config';
 
 interface CostPreviewProps {
   model: ModelId;
@@ -11,6 +12,28 @@ export function CostPreview({ model, duration, autoModel }: CostPreviewProps) {
   const effectiveModel = autoModel ? selectCheapestModel(duration) : model;
   const pricing = MODEL_PRICING[effectiveModel];
   const cost = pricing.perSong;
+
+  if (isLocalMode()) {
+    return (
+      <div className="cost-preview">
+        <div className="cost-row">
+          <span className="cost-label">Backend</span>
+          <span className="cost-value">Local / self-hosted</span>
+        </div>
+        <div className="cost-row">
+          <span className="cost-label">Duration</span>
+          <span className="cost-value">{formatDuration(duration)}</span>
+        </div>
+        <div className="cost-row cost-row--total">
+          <span className="cost-label">Cost</span>
+          <span className="cost-value">Runs on your hardware</span>
+        </div>
+        <p className="cost-hint">
+          No OpenRouter billing. Generation uses your local API server.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="cost-preview">

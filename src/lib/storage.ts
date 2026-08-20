@@ -1,6 +1,9 @@
 import type { SavedSong } from '../types';
+import { isLocalMode } from './config';
 
 const API_KEY_STORAGE = 'lyria_api_key';
+const LOCAL_BASE_URL_STORAGE = 'lyria_local_base_url';
+const LOCAL_API_KEY_STORAGE = 'lyria_local_api_key';
 const SONGS_STORAGE = 'lyria_songs';
 const DB_NAME = 'lyria-songs-db';
 const DB_VERSION = 2;
@@ -34,6 +37,43 @@ export function setApiKey(key: string): void {
 
 export function clearApiKey(): void {
   localStorage.removeItem(API_KEY_STORAGE);
+}
+
+export function getLocalBaseUrl(): string | null {
+  return localStorage.getItem(LOCAL_BASE_URL_STORAGE);
+}
+
+export function setLocalBaseUrl(url: string): void {
+  localStorage.setItem(LOCAL_BASE_URL_STORAGE, normalizeLocalBaseUrl(url));
+}
+
+export function getLocalApiKey(): string | null {
+  return localStorage.getItem(LOCAL_API_KEY_STORAGE);
+}
+
+export function setLocalApiKey(key: string): void {
+  const trimmed = key.trim();
+  if (trimmed) localStorage.setItem(LOCAL_API_KEY_STORAGE, trimmed);
+  else localStorage.removeItem(LOCAL_API_KEY_STORAGE);
+}
+
+export function normalizeLocalBaseUrl(url: string): string {
+  return url.trim().replace(/\/+$/, '');
+}
+
+export function clearLocalConfig(): void {
+  localStorage.removeItem(LOCAL_BASE_URL_STORAGE);
+  localStorage.removeItem(LOCAL_API_KEY_STORAGE);
+}
+
+export function isAppConfigured(): boolean {
+  if (isLocalMode()) return !!getLocalBaseUrl();
+  return !!getApiKey();
+}
+
+export function clearAppConfig(): void {
+  if (isLocalMode()) clearLocalConfig();
+  else clearApiKey();
 }
 
 export function getSongsMetadata(): Omit<SavedSong, 'audioDataUrl'>[] {

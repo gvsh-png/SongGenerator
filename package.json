@@ -5,9 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --mode selfhosted",
     "build": "tsc -b && vite build",
+    "build:local": "tsc -b && vite build --mode selfhosted",
+    "local-server": "node local-server/index.js",
+    "local-server:mock": "LOCAL_MOCK=1 node local-server/index.js",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:local": "vite preview --outDir dist-local"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",

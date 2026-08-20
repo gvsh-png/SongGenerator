@@ -1,6 +1,7 @@
 export type ModelId =
   | 'google/lyria-3-clip-preview'
-  | 'google/lyria-3-pro-preview';
+  | 'google/lyria-3-pro-preview'
+  | 'local-default';
 
 export type VocalType = 'instrumental' | 'male' | 'female' | 'duet' | 'choir';
 export type EnergyLevel = 'low' | 'medium' | 'high' | 'intense';

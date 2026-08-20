@@ -1,5 +1,6 @@
 import { getSongsMetadata } from '../lib/storage';
 import { formatDuration } from '../lib/pricing';
+import { getAppBranding, isLocalMode } from '../lib/config';
 
 interface HomeScreenProps {
   onCreateSong: () => void;
@@ -15,15 +16,18 @@ export function HomeScreen({
   onWriteLyrics,
   onOpenLibrary,
 }: HomeScreenProps) {
+  const branding = getAppBranding();
   const recentSongs = getSongsMetadata().slice(0, 3);
 
   return (
     <div className="home-screen">
       <section className="home-hero">
-        <p className="home-eyebrow">AI Music Studio</p>
+        <p className="home-eyebrow">{branding.tagline}</p>
         <h2 className="home-title">What will you create today?</h2>
         <p className="home-subtitle">
-          Generate songs with Lyria 3 — describe a vibe, write your own lyrics, or use an AI prompt.
+          {isLocalMode()
+            ? 'Generate songs on your own hardware — describe a vibe, write lyrics, or use a prompt template.'
+            : 'Generate songs with Lyria 3 — describe a vibe, write your own lyrics, or use an AI prompt.'}
         </p>
       </section>
 
@@ -32,7 +36,7 @@ export function HomeScreen({
           <span className="action-card-icon" aria-hidden="true">✦</span>
           <div className="action-card-body">
             <h3>Create a song</h3>
-            <p>Describe your track and generate music directly with Lyria 3.</p>
+            <p>Describe your track and generate music with {branding.generateWith}.</p>
           </div>
           <span className="action-card-arrow" aria-hidden="true">→</span>
         </button>
@@ -82,7 +86,7 @@ export function HomeScreen({
         <ol className="home-steps">
           <li>Pick a path — describe, write lyrics, or use a prompt template</li>
           <li>Set duration, genre, and vocals</li>
-          <li>Confirm cost and generate your track</li>
+          <li>{isLocalMode() ? 'Generate on your local server' : 'Confirm cost and generate your track'}</li>
           <li>Listen, download, and save to your library</li>
         </ol>
       </section>

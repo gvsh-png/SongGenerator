@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { AppView, GenerationProgress, PromptFlowState, SavedSong, SongOptions } from './types';
 import { defaultPromptFlowState } from './types';
-import { ApiKeySetup } from './components/ApiKeySetup';
+import { SetupScreen, checkAppConfigured } from './components/SetupScreen';
 import { SongForm } from './components/SongForm';
 import { SongLibrary } from './components/SongLibrary';
 import { GenerationLoader } from './components/GenerationLoader';
@@ -10,15 +10,17 @@ import { CreateActionSheet } from './components/CreateActionSheet';
 import { BottomNav } from './components/BottomNav';
 import { PromptWorkflow } from './components/PromptWorkflow';
 import { WriteLyricsForm } from './components/WriteLyricsForm';
-import { getApiKey, saveSong, clearApiKey } from './lib/storage';
+import { clearAppConfig, saveSong } from './lib/storage';
 import { buildPrompt, buildPromptFromFlow, defaultSongOptions, defaultLyricsSongOptions, flowToSongOptions } from './lib/prompt';
 import { suggestTitleFromLyrics } from './lib/titleFromLyrics';
-import { generateSong } from './lib/openrouter';
+import { generateSong } from './lib/providers/generateSong';
 import { humanizeGenerationError } from './lib/generationErrors';
 import { estimateCost, selectCheapestModel } from './lib/pricing';
+import { getAppBranding } from './lib/config';
 
 function App() {
-  const [hasKey, setHasKey] = useState(!!getApiKey());
+  const branding = getAppBranding();
+  const [hasKey, setHasKey] = useState(checkAppConfigured());
   const [view, setView] = useState<AppView>('home');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [options, setOptions] = useState(defaultSongOptions());
@@ -37,16 +39,12 @@ function App() {
     duration: number,
     songMeta: { title: string; options: SavedSong['options'] },
   ) => {
-    const apiKey = getApiKey();
-    if (!apiKey) return;
-
     setError(null);
     setIsGenerating(true);
     abortRef.current = new AbortController();
 
     try {
       const result = await generateSong(
-        apiKey,
         prompt,
         model,
         duration,
@@ -150,7 +148,7 @@ function App() {
   };
 
   if (!hasKey) {
-    return <ApiKeySetup onReady={() => setHasKey(true)} />;
+    return <SetupScreen onReady={() => setHasKey(true)} />;
   }
 
   return (
@@ -163,12 +161,12 @@ function App() {
             onClick={() => setView('home')}
           >
             <span className="brand-icon">♪</span>
-            <h1>Lyria Studio</h1>
+            <h1>{branding.appName}</h1>
           </button>
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => {
-              clearApiKey();
+              clearAppConfig();
               setHasKey(false);
             }}
           >
@@ -191,7 +189,7 @@ function App() {
             <div className="page-create">
               <div className="page-header">
                 <h2>Create a song</h2>
-                <p>Describe your track and generate with Lyria 3.</p>
+                <p>Describe your track and generate with {branding.generateWith}.</p>
               </div>
               <SongForm
                 options={options}

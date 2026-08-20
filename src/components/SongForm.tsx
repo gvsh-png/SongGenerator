@@ -14,6 +14,7 @@ import {
 import { SpeechInput } from './SpeechInput';
 import { CostPreview } from './CostPreview';
 import { selectCheapestModel } from '../lib/pricing';
+import { isLocalMode } from '../lib/config';
 
 interface SongFormProps {
   options: SongOptions;
@@ -288,6 +289,7 @@ export function SongForm({
             />
           </div>
 
+          {!isLocalMode() && (
           <div className="form-section">
             <label className="checkbox-label">
               <input
@@ -298,6 +300,7 @@ export function SongForm({
               Auto-select cheapest model (Clip ≤30s, Pro &gt;30s)
             </label>
           </div>
+          )}
         </div>
       )}
 

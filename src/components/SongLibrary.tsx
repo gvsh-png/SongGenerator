@@ -22,6 +22,7 @@ import { getLyricsForSong } from '../lib/lyrics';
 import { generateMusicVideo } from '../lib/videoGeneration';
 import { MusicVideoConfirm } from './MusicVideoConfirm';
 import { GenerationLoader } from './GenerationLoader';
+import { supportsMusicVideo } from '../lib/config';
 
 interface SongLibraryProps {
   refreshKey: number;
@@ -270,7 +271,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
                         {downloadingId === song.id ? 'Saving…' : '↓ Download song'}
                       </button>
 
-                      {!song.musicVideo ? (
+                      {!song.musicVideo && supportsMusicVideo() ? (
                         <button
                           type="button"
                           className="btn btn-secondary btn-sm"
@@ -279,7 +280,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
                         >
                           ▶ Music video · {formatCost(estimateMusicVideoCost(song.duration))}
                         </button>
-                      ) : (
+                      ) : !song.musicVideo ? null : (
                         <button
                           type="button"
                           className="btn btn-secondary btn-sm"
@@ -312,18 +313,20 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
         </div>
       </div>
 
-      <MusicVideoConfirm
-        songTitle={confirmSong?.title ?? 'Untitled Song'}
-        songDuration={confirmSong?.duration ?? 30}
-        hasLyrics={confirmSong ? getLyricsForSong(confirmSong).hasLyrics : false}
-        defaultVideoPrompt={confirmSong ? buildMusicVideoPrompt(confirmSong) : ''}
-        open={!!confirmVideoSongId && !isGeneratingVideo}
-        onConfirm={handleConfirmMusicVideo}
-        onCancel={() => setConfirmVideoSongId(null)}
-        isGenerating={isGeneratingVideo}
-      />
+      {supportsMusicVideo() && (
+        <MusicVideoConfirm
+          songTitle={confirmSong?.title ?? 'Untitled Song'}
+          songDuration={confirmSong?.duration ?? 30}
+          hasLyrics={confirmSong ? getLyricsForSong(confirmSong).hasLyrics : false}
+          defaultVideoPrompt={confirmSong ? buildMusicVideoPrompt(confirmSong) : ''}
+          open={!!confirmVideoSongId && !isGeneratingVideo}
+          onConfirm={handleConfirmMusicVideo}
+          onCancel={() => setConfirmVideoSongId(null)}
+          isGenerating={isGeneratingVideo}
+        />
+      )}
 
-      {isGeneratingVideo && videoProgress && (
+      {supportsMusicVideo() && isGeneratingVideo && videoProgress && (
         <GenerationLoader
           progress={videoProgress}
           onCancel={handleCancelVideo}

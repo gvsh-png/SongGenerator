@@ -1,4 +1,5 @@
 import type { ModelId } from '../types';
+import { isLocalMode } from './config';
 
 export const MODEL_PRICING: Record<ModelId, { perSong: number; label: string; maxDuration: number }> = {
   'google/lyria-3-clip-preview': {
@@ -11,9 +12,15 @@ export const MODEL_PRICING: Record<ModelId, { perSong: number; label: string; ma
     label: 'Lyria 3 Pro',
     maxDuration: 120,
   },
+  'local-default': {
+    perSong: 0,
+    label: 'Local model',
+    maxDuration: 600,
+  },
 };
 
 export function selectCheapestModel(duration: number): ModelId {
+  if (isLocalMode()) return 'local-default';
   if (duration <= 30) {
     return 'google/lyria-3-clip-preview';
   }
@@ -21,10 +28,14 @@ export function selectCheapestModel(duration: number): ModelId {
 }
 
 export function estimateCost(model: ModelId): number {
+  if (isLocalMode()) return 0;
   return MODEL_PRICING[model].perSong;
 }
 
 export function estimateGenerationTimeMs(model: ModelId, duration: number): number {
+  if (model === 'local-default') {
+    return Math.round(Math.max(20000, duration * 1500));
+  }
   const baseLatency = model === 'google/lyria-3-clip-preview' ? 15000 : 40000;
   const durationFactor = duration / (model === 'google/lyria-3-clip-preview' ? 30 : 90);
   return Math.round(baseLatency * Math.max(0.6, durationFactor));
