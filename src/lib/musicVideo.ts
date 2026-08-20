@@ -63,7 +63,12 @@ export function estimateMusicVideoCost(songDurationSec: number): number {
 
 export function buildMusicVideoPrompt(
   song: SavedSong | Omit<SavedSong, 'audioDataUrl'>,
+  customPrompt?: string,
 ): string {
+  if (customPrompt?.trim()) {
+    return customPrompt.trim();
+  }
+
   const { options, title, prompt, transcript } = song;
   const context = transcript?.slice(0, 120) || prompt.slice(0, 160);
 
@@ -80,8 +85,9 @@ export function buildMusicVideoPromptForClip(
   song: SavedSong | Omit<SavedSong, 'audioDataUrl'>,
   clipIndex: number,
   totalClips: number,
+  customPrompt?: string,
 ): string {
-  const base = buildMusicVideoPrompt(song);
+  const base = buildMusicVideoPrompt(song, customPrompt);
   let phase: string;
 
   if (totalClips === 1) {

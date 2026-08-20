@@ -669,6 +669,16 @@ svg {
 
 .confirm-sheet {
   max-width: 420px;
+  max-height: min(92dvh, 720px);
+  overflow-y: auto;
+}
+
+.confirm-prompt-section {
+  margin-bottom: 16px;
+}
+
+.text-area--video-prompt {
+  min-height: 7rem;
 }
 
 .confirm-sheet .confirm-actions {

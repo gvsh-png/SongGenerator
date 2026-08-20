@@ -15,6 +15,7 @@ import { MODEL_PRICING } from '../lib/pricing';
 import {
   VIDEO_MODEL,
   VIDEO_PRICING,
+  buildMusicVideoPrompt,
   estimateMusicVideoCost,
 } from '../lib/musicVideo';
 import { getLyricsForSong } from '../lib/lyrics';
@@ -117,9 +118,9 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
     }
   };
 
-  const handleConfirmMusicVideo = useCallback(async () => {
+  const handleConfirmMusicVideo = useCallback(async (videoPrompt: string) => {
     const songId = confirmVideoSongId;
-    if (!songId) return;
+    if (!songId || !videoPrompt.trim()) return;
 
     const apiKey = getApiKey();
     if (!apiKey) return;
@@ -145,6 +146,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
         song,
         { onProgress: setVideoProgress },
         abortRef.current.signal,
+        videoPrompt,
       );
 
       await saveSongVideo(songId, result.videoBlob);
@@ -314,6 +316,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
         songTitle={confirmSong?.title ?? 'Untitled Song'}
         songDuration={confirmSong?.duration ?? 30}
         hasLyrics={confirmSong ? getLyricsForSong(confirmSong).hasLyrics : false}
+        defaultVideoPrompt={confirmSong ? buildMusicVideoPrompt(confirmSong) : ''}
         open={!!confirmVideoSongId && !isGeneratingVideo}
         onConfirm={handleConfirmMusicVideo}
         onCancel={() => setConfirmVideoSongId(null)}
