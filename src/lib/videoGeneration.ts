@@ -5,7 +5,8 @@ import {
   planMusicVideoClips,
   estimateVideoGenerationTimeMs,
 } from './musicVideo';
-import { concatVideoClips } from './videoConcat';
+import { concatVideoClips, assembleMusicVideo } from './videoConcat';
+import { getLyricsForSong } from './lyrics';
 
 export interface VideoJobResponse {
   id: string;
@@ -28,6 +29,7 @@ export interface GenerateMusicVideoResult {
   cost: number;
   duration: number;
   clipCount: number;
+  hasLyrics: boolean;
 }
 
 export interface VideoGenerationCallbacks {
@@ -153,7 +155,7 @@ async function generateSingleClip(
 
 export async function generateMusicVideo(
   apiKey: string,
-  song: Omit<SavedSong, 'audioDataUrl'>,
+  song: SavedSong,
   callbacks: VideoGenerationCallbacks,
   signal?: AbortSignal,
 ): Promise<GenerateMusicVideoResult> {
@@ -209,14 +211,25 @@ export async function generateMusicVideo(
 
   update('finalizing', 88, 'Stitching clips into full music video…');
 
-  const videoBlob = await concatVideoClips(clipBlobs, (msg) => {
-    update('finalizing', 92, msg);
+  const mergedVideo = await concatVideoClips(clipBlobs, (msg) => {
+    update('finalizing', 90, msg);
   });
+
+  update('finalizing', 93, 'Adding your song, lyrics, and syncing…');
+
+  const { hasLyrics } = getLyricsForSong(song);
+
+  const videoBlob = await assembleMusicVideo(
+    mergedVideo,
+    song,
+    plan.totalDuration,
+    (msg) => update('finalizing', 96, msg),
+  );
 
   callbacks.onProgress({
     phase: 'complete',
     progress: 100,
-    message: 'Music video ready!',
+    message: hasLyrics ? 'Music video with lyrics ready!' : 'Music video ready!',
     elapsedMs: Date.now() - startTime,
     estimatedRemainingMs: 0,
     chunksReceived: clipBlobs.length,
@@ -228,6 +241,7 @@ export async function generateMusicVideo(
     cost: totalCost,
     duration: plan.totalDuration,
     clipCount: plan.clipCount,
+    hasLyrics,
   };
 }
 

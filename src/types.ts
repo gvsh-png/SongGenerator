@@ -52,6 +52,7 @@ export interface MusicVideoMeta {
   resolution: string;
   model: VideoModelId;
   clipCount: number;
+  hasLyrics?: boolean;
 }
 
 export interface SavedSong {

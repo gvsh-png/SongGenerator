@@ -7,6 +7,7 @@ import {
 interface MusicVideoConfirmProps {
   songTitle: string;
   songDuration: number;
+  hasLyrics: boolean;
   open: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -16,6 +17,7 @@ interface MusicVideoConfirmProps {
 export function MusicVideoConfirm({
   songTitle,
   songDuration,
+  hasLyrics,
   open,
   onConfirm,
   onCancel,
@@ -37,7 +39,7 @@ export function MusicVideoConfirm({
         <div className="sheet-handle" aria-hidden="true" />
         <h2 className="sheet-title">Create music video</h2>
         <p className="sheet-subtitle">
-          Full-length visual for &ldquo;{songTitle}&rdquo;
+          Full video for &ldquo;{songTitle}&rdquo;
         </p>
 
         <div className="cost-preview">
@@ -58,19 +60,25 @@ export function MusicVideoConfirm({
             <span className="cost-value">{plan.clipCount} × up to 8s</span>
           </div>
           <div className="cost-row">
-            <span className="cost-label">Resolution</span>
-            <span className="cost-value">{VIDEO_PRICING.resolution}</span>
+            <span className="cost-label">Includes</span>
+            <span className="cost-value">Song + visuals + lyrics</span>
           </div>
           <div className="cost-row">
-            <span className="cost-label">Audio</span>
-            <span className="cost-value">Visuals only (use your MP3)</span>
+            <span className="cost-label">Lyrics</span>
+            <span className="cost-value">
+              {hasLyrics ? 'Synced subtitles burned in' : 'Title overlay'}
+            </span>
+          </div>
+          <div className="cost-row">
+            <span className="cost-label">Output</span>
+            <span className="cost-value">Single MP4 (audio included)</span>
           </div>
           <div className="cost-row cost-row--total">
             <span className="cost-label">Estimated cost</span>
             <span className="cost-value cost-value--price">{formatCost(plan.estimatedCost)}</span>
           </div>
           <p className="cost-hint">
-            Generates a video matching your song length (up to 2 min), stitched from {plan.clipCount} clip{plan.clipCount > 1 ? 's' : ''}. Play alongside your downloaded MP3.
+            Builds one complete music video: your song audio, AI visuals, and lyrics combined into a single downloadable MP4.
           </p>
         </div>
 

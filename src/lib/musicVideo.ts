@@ -95,5 +95,5 @@ export function buildMusicVideoPromptForClip(
 }
 
 export function estimateVideoGenerationTimeMs(clipCount: number): number {
-  return clipCount * 90000 + 45000;
+  return clipCount * 90000 + 60000;
 }

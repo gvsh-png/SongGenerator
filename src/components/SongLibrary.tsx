@@ -17,6 +17,7 @@ import {
   VIDEO_PRICING,
   estimateMusicVideoCost,
 } from '../lib/musicVideo';
+import { getLyricsForSong } from '../lib/lyrics';
 import { generateMusicVideo } from '../lib/videoGeneration';
 import { MusicVideoConfirm } from './MusicVideoConfirm';
 import { GenerationLoader } from './GenerationLoader';
@@ -123,8 +124,16 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
     const apiKey = getApiKey();
     if (!apiKey) return;
 
-    const song = songs.find((s) => s.id === songId);
-    if (!song) return;
+    const songMeta = songs.find((s) => s.id === songId);
+    if (!songMeta) return;
+
+    const audioDataUrl = await getSongAudio(songId);
+    if (!audioDataUrl) {
+      setVideoError('Could not load song audio.');
+      return;
+    }
+
+    const song = { ...songMeta, audioDataUrl };
 
     setVideoError(null);
     setIsGeneratingVideo(true);
@@ -147,6 +156,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
           resolution: VIDEO_PRICING.resolution,
           model: VIDEO_MODEL,
           clipCount: result.clipCount,
+          hasLyrics: result.hasLyrics,
         },
       });
 
@@ -243,6 +253,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
                       {song.musicVideo && (
                         <span className="song-cost">
                           Video: {formatCost(song.musicVideo.cost)}
+                          {song.musicVideo.hasLyrics ? ' · lyrics' : ''}
                         </span>
                       )}
                     </div>
@@ -302,6 +313,7 @@ export function SongLibrary({ refreshKey }: SongLibraryProps) {
       <MusicVideoConfirm
         songTitle={confirmSong?.title ?? 'Untitled Song'}
         songDuration={confirmSong?.duration ?? 30}
+        hasLyrics={confirmSong ? getLyricsForSong(confirmSong).hasLyrics : false}
         open={!!confirmVideoSongId && !isGeneratingVideo}
         onConfirm={handleConfirmMusicVideo}
         onCancel={() => setConfirmVideoSongId(null)}
