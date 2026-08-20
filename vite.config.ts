@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 const localApiProxy = {
   '/local-api': {
-    target: 'http://localhost:8787',
+    target: 'http://127.0.0.1:8787',
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/local-api/, ''),
     timeout: 600_000,

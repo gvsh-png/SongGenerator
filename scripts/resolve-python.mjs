@@ -23,9 +23,10 @@ export function pythonLabel(prefix) {
 }
 
 export function runPython(prefix, args, opts = {}) {
+  const { stdio, ...rest } = opts;
   return spawnSync(prefix[0], [...prefix.slice(1), ...args], {
-    encoding: 'utf8',
-    ...opts,
+    ...(stdio === 'inherit' ? { stdio: 'inherit' } : { encoding: 'utf8', stdio }),
+    ...rest,
   });
 }
 

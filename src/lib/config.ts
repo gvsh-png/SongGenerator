@@ -16,11 +16,16 @@ export function isCloudMode(): boolean {
 /** Same-origin path proxied to the local API server in dev/preview (see vite.config.ts). */
 export const LOCAL_API_PROXY_PATH = '/local-api';
 
-export const LOCAL_DIRECT_URL = 'http://localhost:8787';
+/** Prefer 127.0.0.1 over localhost — Windows browsers often fail on IPv6 localhost. */
+export const LOCAL_DIRECT_URL = 'http://127.0.0.1:8787';
+
+export const LOCAL_DIRECT_URL_ALT = 'http://localhost:8787';
 
 const LEGACY_LOCAL_URLS = new Set([
   LOCAL_DIRECT_URL,
+  LOCAL_DIRECT_URL_ALT,
   'http://127.0.0.1:8787',
+  'http://localhost:8787',
 ]);
 
 export function isBrowserLocalHost(): boolean {
@@ -65,6 +70,22 @@ export function normalizeLocalApiBase(url: string): string {
 
 export function resolveLocalApiBase(storedUrl?: string | null): string {
   return normalizeLocalApiBase(storedUrl ?? getDefaultLocalBaseUrl());
+}
+
+/** URLs to try when connecting to the local API (order matters). */
+export function getLocalApiCandidates(storedUrl?: string | null): string[] {
+  const primary = resolveLocalApiBase(storedUrl);
+  const extras: string[] = [];
+
+  if (typeof window !== 'undefined' && isBrowserLocalHost()) {
+    for (const url of [LOCAL_DIRECT_URL, LOCAL_DIRECT_URL_ALT, LOCAL_API_PROXY_PATH]) {
+      if (url !== primary) extras.push(url);
+    }
+  } else if (primary !== LOCAL_API_PROXY_PATH) {
+    extras.push(LOCAL_API_PROXY_PATH);
+  }
+
+  return [...new Set([primary, ...extras])];
 }
 
 export interface AppBranding {

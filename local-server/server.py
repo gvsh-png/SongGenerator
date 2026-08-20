@@ -6,6 +6,8 @@ from __future__ import annotations
 import base64
 import io
 import os
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
 import scipy.io.wavfile
@@ -25,6 +27,7 @@ model: MusicgenForConditionalGeneration | None = None
 device: str = "cpu"
 gpu_name: str | None = None
 model_id: str = ""
+generate_pool = ThreadPoolExecutor(max_workers=1)
 
 
 def resolve_device() -> str:
@@ -110,7 +113,20 @@ def health():
 
 
 @app.post("/api/generate")
-def generate(req: GenerateRequest):
+async def generate(req: GenerateRequest):
+    if model is None or processor is None:
+        raise HTTPException(status_code=503, detail="Model still loading. Retry in a minute.")
+
+    loop = asyncio.get_event_loop()
+    try:
+        return await loop.run_in_executor(generate_pool, lambda: _generate_sync(req))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+def _generate_sync(req: GenerateRequest):
     if model is None or processor is None:
         raise HTTPException(status_code=503, detail="Model still loading. Retry in a minute.")
 

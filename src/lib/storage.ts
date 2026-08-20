@@ -66,20 +66,10 @@ export function clearLocalConfig(): void {
   localStorage.removeItem(LOCAL_API_KEY_STORAGE);
 }
 
-/** Seed /local-api and migrate legacy localhost URLs so local mode works out of the box. */
+/** Seed best API URL and migrate stale entries on every load. */
 export function ensureLocalConfig(): void {
   if (!isLocalMode()) return;
-
-  const stored = getLocalBaseUrl();
-  if (!stored) {
-    setLocalBaseUrl(getDefaultLocalBaseUrl());
-    return;
-  }
-
-  const normalized = normalizeLocalApiBase(stored);
-  if (normalized !== stored) {
-    setLocalBaseUrl(normalized);
-  }
+  setLocalBaseUrl(getLocalBaseUrl() ?? getDefaultLocalBaseUrl());
 }
 
 export function isAppConfigured(): boolean {

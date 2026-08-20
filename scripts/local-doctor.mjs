@@ -51,7 +51,7 @@ if (prefix) {
 
 console.log('\n4. Port 8787');
 try {
-  const res = await fetch('http://localhost:8787/health');
+  const res = await fetch('http://127.0.0.1:8787/health');
   const data = await res.json();
   ok(`Server responding: ${data.message ?? data.status} (${data.device ?? '?'})`);
 } catch {

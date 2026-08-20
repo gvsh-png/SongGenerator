@@ -16,7 +16,8 @@ import { suggestTitleFromLyrics } from './lib/titleFromLyrics';
 import { generateSong } from './lib/providers/generateSong';
 import { humanizeGenerationError } from './lib/generationErrors';
 import { estimateCost, selectCheapestModel } from './lib/pricing';
-import { getAppBranding } from './lib/config';
+import { getAppBranding, isLocalMode } from './lib/config';
+import { LocalServerBanner } from './components/LocalServerBanner';
 
 function App() {
   const branding = getAppBranding();
@@ -173,6 +174,8 @@ function App() {
             Settings
           </button>
         </header>
+
+        {isLocalMode() && <LocalServerBanner />}
 
         <main className="app-main">
           {view === 'home' && (

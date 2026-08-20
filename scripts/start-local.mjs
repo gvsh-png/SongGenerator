@@ -32,7 +32,7 @@ async function waitForHealth(maxSeconds = 600) {
   const start = Date.now();
   while (Date.now() - start < maxSeconds * 1000) {
     try {
-      const res = await fetch('http://localhost:8787/health');
+      const res = await fetch('http://127.0.0.1:8787/health');
       if (res.ok) {
         const data = await res.json();
         if (data.status === 'ok' || data.status === 'loading') {
@@ -49,7 +49,7 @@ async function waitForHealth(maxSeconds = 600) {
 
 console.log('==> Song Studio Local');
 console.log(`    Using ${pythonLabel(prefix)}`);
-console.log('    Starting MusicGen API on http://localhost:8787');
+console.log('    Starting MusicGen API on http://127.0.0.1:8787');
 console.log('    First run downloads the model — can take several minutes.\n');
 
 const api = runPythonScript('local-server/server.py');
@@ -66,7 +66,7 @@ console.log('    Waiting for API (up to 10 min while model loads)…');
 const health = await waitForHealth(600);
 
 if (!health) {
-  console.error('\nERROR: API never responded on http://localhost:8787/health');
+  console.error('\nERROR: API never responded on http://127.0.0.1:8787/health');
   console.error('Check that Python deps are installed and port 8787 is free.');
   api.kill();
   process.exit(1);
@@ -77,19 +77,35 @@ if (health.status === 'loading') {
   console.log('    Model still loading — generation may fail until ready.');
 }
 
-console.log('    Starting UI at http://localhost:5173\n');
-const ui = runUi();
+console.log('    Starting UI at http://127.0.0.1:5173\n');
+
+let ui;
+try {
+  ui = runUi();
+} catch (error) {
+  console.error('\nCould not start UI:', error instanceof Error ? error.message : error);
+  console.error('API is still running. In a NEW PowerShell window run:');
+  console.error('  cd', root);
+  console.error('  npm run dev:local');
+  console.error('Then open http://127.0.0.1:5173\n');
+  return;
+}
+
+ui.on('error', (error) => {
+  console.error('\nUI process error:', error.message);
+  console.error('API is still running. In a NEW PowerShell window run: npm run dev:local');
+});
 
 function shutdown() {
   api.kill();
-  ui.kill();
+  ui?.kill();
   process.exit(0);
 }
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-ui.on('exit', (code) => {
-  api.kill();
-  process.exit(code ?? 0);
+ui.on('exit', () => {
+  console.log('\nUI stopped. API still running on http://127.0.0.1:8787');
+  console.log('Restart UI with: npm run dev:local\n');
 });
