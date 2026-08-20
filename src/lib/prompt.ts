@@ -1,6 +1,23 @@
 import type { PromptFlowState, SongOptions } from '../types';
 import { formatDuration } from './pricing';
-import { buildSongSpecPrompt } from './promptTemplates';
+import { buildSongSpecPrompt, ORIGINAL_SONG_DIRECTIVE } from './promptTemplates';
+
+function vocalDirective(vocals: SongOptions['vocals']): string {
+  switch (vocals) {
+    case 'instrumental':
+      return 'Instrumental only, no vocals.';
+    case 'male':
+      return 'Male lead vocals.';
+    case 'female':
+      return 'Female lead vocals.';
+    case 'duet':
+      return 'Male and female duet vocals.';
+    case 'choir':
+      return 'Choir or group vocals.';
+    default:
+      return 'Vocals as described.';
+  }
+}
 
 export function buildPromptFromFlow(flow: PromptFlowState): string {
   const title = flow.customTitle.trim() || flow.suggestedTitle;
@@ -40,33 +57,27 @@ export function flowToSongOptions(flow: PromptFlowState): SongOptions {
 }
 
 export function buildPrompt(options: SongOptions): string {
-  const parts: string[] = [];
+  const parts: string[] = [ORIGINAL_SONG_DIRECTIVE];
 
-  parts.push(`Create a ${formatDuration(options.duration)} song.`);
-
-  if (options.genre) parts.push(`Genre: ${options.genre}.`);
-  if (options.mood) parts.push(`Mood: ${options.mood}.`);
-  parts.push(`Tempo: ${options.tempo}.`);
-  parts.push(`Energy: ${options.energy}.`);
-
-  if (options.vocals === 'instrumental') {
-    parts.push('Instrumental only, no vocals.');
-  } else {
-    parts.push(`Vocals: ${options.vocals}.`);
-  }
+  parts.push(
+    `${options.genre} track, ${formatDuration(options.duration)}, ${options.mood} mood, ${options.tempo} tempo, ${options.energy} energy.`,
+  );
+  parts.push(vocalDirective(options.vocals));
 
   if (options.instruments.length > 0) {
-    parts.push(`Featured instruments: ${options.instruments.join(', ')}.`);
+    parts.push(`Instrumentation: ${options.instruments.join(', ')}.`);
   }
 
   if (options.key && options.key !== 'Any') {
     parts.push(`Key: ${options.key}.`);
   }
 
-  if (options.era) parts.push(`Era/style reference: ${options.era}.`);
+  if (options.era) {
+    parts.push(`Era/style reference: ${options.era}.`);
+  }
 
   if (options.structure && options.structure !== 'Auto') {
-    parts.push(`Song structure: ${options.structure}.`);
+    parts.push(`Structure: ${options.structure}.`);
   }
 
   if (options.description.trim()) {
@@ -74,7 +85,7 @@ export function buildPrompt(options: SongOptions): string {
   }
 
   if (options.lyrics.trim()) {
-    parts.push(`Lyrics to include:\n${options.lyrics.trim()}`);
+    parts.push(`Perform these original lyrics:\n${options.lyrics.trim()}`);
   }
 
   if (options.title.trim()) {

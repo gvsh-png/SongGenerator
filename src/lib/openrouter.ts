@@ -1,5 +1,6 @@
 import type { GenerationProgress, ModelId } from '../types';
 import { estimateGenerationTimeMs } from './pricing';
+import { humanizeGenerationError, throwIfStreamBlocked } from './generationErrors';
 
 export interface GenerateResult {
   audioDataUrl: string;
@@ -58,10 +59,13 @@ function pushError(parsed: ParsedAudio, error: unknown): void {
     parsed.streamErrors.push(error);
     return;
   }
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === 'string' && message.trim()) {
-      parsed.streamErrors.push(message);
+  if (typeof error === 'object' && error !== null) {
+    const err = error as { message?: unknown; code?: unknown };
+    if (typeof err.message === 'string' && err.message.trim()) {
+      parsed.streamErrors.push(err.message);
+    }
+    if (typeof err.code === 'string' && err.code.trim()) {
+      parsed.streamErrors.push(err.code);
     }
   }
 }
@@ -234,7 +238,7 @@ async function resolveAudioData(
 
 function buildNoAudioError(parsed: ParsedAudio, model: ModelId): Error {
   if (parsed.streamErrors.length > 0) {
-    return new Error(parsed.streamErrors[parsed.streamErrors.length - 1]);
+    return new Error(humanizeGenerationError(parsed.streamErrors[parsed.streamErrors.length - 1]));
   }
 
   const text = parsed.transcriptParts.join('').trim();
@@ -265,7 +269,7 @@ async function parseApiError(response: Response): Promise<string> {
   } catch {
     if (errText) message = errText.slice(0, 300);
   }
-  return message;
+  return humanizeGenerationError(message);
 }
 
 async function generateSongStreaming(
@@ -365,6 +369,8 @@ export async function generateSong(
       { chunksReceived, transcript },
     );
   });
+
+  throwIfStreamBlocked(parsed.streamErrors);
 
   const audioBytes = await resolveAudioData(parsed, apiKey, signal);
 

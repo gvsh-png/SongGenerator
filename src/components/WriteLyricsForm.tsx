@@ -77,7 +77,10 @@ export function WriteLyricsForm({
           placeholder={"[Verse 1]\nWalking down the empty street at midnight…\n\n[Chorus]\nWe rise, we fall, we stand together…"}
           rows={10}
         />
-        <p className="hint">Use section labels like [Verse] or [Chorus] if you like.</p>
+        <p className="hint">
+          Use section labels like [Verse] or [Chorus]. Keep lyrics original and family-friendly —
+          Google may block violence, explicit content, or artist names.
+        </p>
       </div>
 
       <div className="form-section">
