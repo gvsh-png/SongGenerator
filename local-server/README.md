@@ -4,14 +4,38 @@ This folder is the **self-hosted backend** for the local edition of the app (`np
 
 The React app talks to your server over HTTP. No OpenRouter, no Google filters — you control the model and policies.
 
-## Quick start (real model — MusicGen)
+## Quick start (GPU — RTX 5080 / NVIDIA)
 
-Downloads **facebook/musicgen-small** (~1.5 GB) on first run. CPU-only; a 30s clip may take several minutes.
+Auto-detects CUDA and uses **musicgen-medium** (better quality). Up to **120s** clips on GPU.
 
 ```bash
-npm run local-server:install   # once — Python deps + model cache
-npm run local-server:real      # terminal 1
-npm run dev:local              # terminal 2
+git checkout self-hosted
+npm install
+
+# Install CUDA PyTorch + deps (RTX 5080: use cu128, or cu124 if cu128 fails)
+npm run local-server:install-gpu
+# or: CUDA_INDEX=cu124 npm run local-server:install-gpu
+
+npm run local-server:real   # terminal 1 — should log your GPU name
+npm run dev:local           # terminal 2
+```
+
+Optional env vars:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MUSICGEN_DEVICE` | auto | Force `cuda`, `cpu`, or `mps` |
+| `MUSICGEN_MODEL` | medium on GPU | e.g. `facebook/musicgen-large` |
+| `MUSICGEN_MAX_SECONDS_GPU` | 120 | Max clip length on GPU |
+
+## Quick start (CPU only)
+
+Downloads **facebook/musicgen-small** (~1.5 GB). Slower; max 30s clips.
+
+```bash
+npm run local-server:install
+npm run local-server:real
+npm run dev:local
 ```
 
 ## Quick start (mock / UI test only)

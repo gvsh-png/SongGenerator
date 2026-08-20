@@ -17,22 +17,65 @@ from pydantic import BaseModel, Field
 from transformers import AutoProcessor, MusicgenForConditionalGeneration
 
 PORT = int(os.environ.get("PORT", "8787"))
-MODEL_ID = os.environ.get("MUSICGEN_MODEL", "facebook/musicgen-small")
-MAX_DURATION = int(os.environ.get("MUSICGEN_MAX_SECONDS", "30"))
+MAX_DURATION_CPU = int(os.environ.get("MUSICGEN_MAX_SECONDS_CPU", "30"))
+MAX_DURATION_GPU = int(os.environ.get("MUSICGEN_MAX_SECONDS_GPU", "120"))
 
 processor: AutoProcessor | None = None
 model: MusicgenForConditionalGeneration | None = None
+device: str = "cpu"
+gpu_name: str | None = None
+model_id: str = ""
+
+
+def resolve_device() -> str:
+    forced = os.environ.get("MUSICGEN_DEVICE", "").strip().lower()
+    if forced in {"cpu", "cuda", "mps"}:
+        return forced
+    if torch.cuda.is_available():
+        return "cuda"
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def resolve_model_id(dev: str) -> str:
+    explicit = os.environ.get("MUSICGEN_MODEL", "").strip()
+    if explicit:
+        return explicit
+    # Medium fits easily on a 16GB GPU (e.g. RTX 5080); small for CPU
+    return "facebook/musicgen-medium" if dev == "cuda" else "facebook/musicgen-small"
+
+
+def max_duration_for_device(dev: str) -> int:
+    return MAX_DURATION_GPU if dev == "cuda" else MAX_DURATION_CPU
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global processor, model
-    print(f"Downloading/loading {MODEL_ID} (first run may take several minutes)…")
-    processor = AutoProcessor.from_pretrained(MODEL_ID)
-    model = MusicgenForConditionalGeneration.from_pretrained(MODEL_ID)
-    model.to("cpu")
+    global processor, model, device, gpu_name, model_id
+
+    device = resolve_device()
+    model_id = resolve_model_id(device)
+
+    if device == "cuda":
+        gpu_name = torch.cuda.get_device_name(0)
+        vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        print(f"GPU detected: {gpu_name} ({vram_gb:.1f} GB VRAM)")
+    else:
+        gpu_name = None
+        print(f"No CUDA GPU — using {device}. Set MUSICGEN_DEVICE=cuda on a machine with a GPU.")
+
+    print(f"Downloading/loading {model_id}…")
+    processor = AutoProcessor.from_pretrained(model_id)
+    model = MusicgenForConditionalGeneration.from_pretrained(model_id)
+    model.to(device)
     model.eval()
-    print(f"Model ready on CPU → http://0.0.0.0:{PORT}")
+
+    if device == "cuda":
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+
+    print(f"Model ready on {device} → http://0.0.0.0:{PORT}")
     yield
 
 
@@ -57,11 +100,12 @@ def health():
     ready = model is not None and processor is not None
     return {
         "status": "ok" if ready else "loading",
-        "message": f"MusicGen ({MODEL_ID})" if ready else "Loading model…",
+        "message": f"MusicGen ({model_id})" if ready else "Loading model…",
         "mock": False,
-        "model": MODEL_ID,
-        "device": "cpu",
-        "maxDurationSec": MAX_DURATION,
+        "model": model_id,
+        "device": device,
+        "gpu": gpu_name,
+        "maxDurationSec": max_duration_for_device(device),
     }
 
 
@@ -74,16 +118,21 @@ def generate(req: GenerateRequest):
     if not prompt:
         raise HTTPException(status_code=400, detail="Prompt is required.")
 
-    duration = min(max(int(req.duration), 5), MAX_DURATION)
-    # ~50 generation steps ≈ 1 second of audio for MusicGen
+    cap = max_duration_for_device(device)
+    duration = min(max(int(req.duration), 5), cap)
     max_new_tokens = duration * 50
 
     inputs = processor(text=[prompt[:800]], padding=True, return_tensors="pt")
+    inputs = {key: value.to(device) for key, value in inputs.items()}
 
     with torch.inference_mode():
-        audio_values = model.generate(**inputs, max_new_tokens=max_new_tokens)
+        if device == "cuda":
+            with torch.autocast(device_type="cuda", dtype=torch.float16):
+                audio_values = model.generate(**inputs, max_new_tokens=max_new_tokens)
+        else:
+            audio_values = model.generate(**inputs, max_new_tokens=max_new_tokens)
 
-    waveform = audio_values[0, 0].cpu().numpy()
+    waveform = audio_values[0, 0].detach().cpu().numpy()
     sampling_rate = model.config.audio_encoder.sampling_rate
 
     buffer = io.BytesIO()
@@ -95,7 +144,8 @@ def generate(req: GenerateRequest):
         "transcript": prompt[:800],
         "mimeType": "audio/wav",
         "duration": duration,
-        "model": MODEL_ID,
+        "model": model_id,
+        "device": device,
     }
 
 
